@@ -6,7 +6,7 @@ import {
     CheckCircle2, XCircle, Loader2, Eye, EyeOff, RefreshCw
 } from 'lucide-react'
 
-const API_BASE = 'http://localhost:8000/api/v1'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
 
 interface AppSettings {
     // UI settings (localStorage)
@@ -33,8 +33,8 @@ export default function SettingsPage() {
         soundAlerts: false,
         autoRefresh: true,
         refreshInterval: 30,
-        apiEndpoint: 'http://localhost:8000',
-        wsEndpoint: 'ws://localhost:8000/ws',
+        apiEndpoint: process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:8000',
+        wsEndpoint: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws',
         gemini_api_key: '',
         gemini_api_key_set: false,
         gemini_model: 'gemini-2.0-flash',
@@ -261,13 +261,12 @@ export default function SettingsPage() {
                     <div>
                         <div className="flex items-center justify-between mb-2">
                             <label className="text-white">Database URL</label>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                settings.database_type === 'sqlite'
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${settings.database_type === 'sqlite'
                                     ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                                     : settings.database_type === 'postgresql'
-                                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                    : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-                            }`}>
+                                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                        : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                                }`}>
                                 {settings.database_type === 'sqlite' ? 'SQLite' : settings.database_type === 'postgresql' ? 'PostgreSQL' : settings.database_type}
                             </span>
                         </div>

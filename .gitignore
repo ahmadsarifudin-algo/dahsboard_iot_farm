@@ -55,3 +55,14 @@ docker-compose.override.yml
 tmp/
 temp/
 *.tmp
+
+# Python virtual environment
+venv/
+.venv/
+
+# Test output files
+test_*.json
+
+# Backend data directory (SQLite, settings)
+backend/data/
+backend/settings.json

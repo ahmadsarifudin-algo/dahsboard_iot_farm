@@ -11,6 +11,8 @@ import {
     Tooltip, Legend, ResponsiveContainer, AreaChart, Area
 } from 'recharts'
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
+
 // ============= Types =============
 interface ChatMessage {
     id: string
@@ -277,7 +279,7 @@ export default function AnalysisPlaygroundPage() {
 
         try {
             // Try real backend API first
-            const res = await fetch('http://localhost:8000/api/v1/analysis/ask', {
+            const res = await fetch(`${API_BASE}/analysis/ask`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: userMsg.content, session_id: sessionId, role_id: activeRole }),
@@ -325,7 +327,7 @@ export default function AnalysisPlaygroundPage() {
             // API not available
             console.warn('Analysis API unavailable:', e)
             response = {
-                content: '🔌 **Server tidak tersedia.** Backend API tidak dapat dijangkau di `localhost:8000`.\n\nPastikan backend server sedang berjalan.',
+                content: `🔌 **Server tidak tersedia.** Backend API tidak dapat dijangkau di \`${API_BASE}\`.\n\nPastikan backend server sedang berjalan.`,
                 severity: 'warning',
             }
         }
@@ -364,7 +366,7 @@ export default function AnalysisPlaygroundPage() {
 
         let response: Omit<ChatMessage, 'id' | 'role' | 'timestamp'>
         try {
-            const res = await fetch('http://localhost:8000/api/v1/analysis/ask', {
+            const res = await fetch(`${API_BASE}/analysis/ask`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: content, session_id: sessionId, role_id: activeRole }),

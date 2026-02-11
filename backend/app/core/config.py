@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     # App
     app_name: str = "IoT Data Center Dashboard"
     debug: bool = False
+    environment: str = "development"  # development, staging, production
     api_v1_prefix: str = "/api/v1"
     
     # Database - SQLite for local dev, PostgreSQL for production
