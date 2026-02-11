@@ -140,9 +140,41 @@ and builds `chart_config` for the frontend.
 ### Gemini Configuration
 
 - Model: `gemini-2.0-flash` (configurable via Settings page)
-- API key stored in `app_settings` table, managed via `/api/v1/settings` endpoint
+- API key stored in `settings.json`, managed via `/api/v1/settings` endpoint
 - Search grounding enabled via `google.genai.types.Tool(google_search=...)` for `uses_search: True` roles
 - Session memory: `ChatSession` cached per `(role_id, session_id)` pair
+
+## Hot-Swap Database
+
+The backend supports **live database switching** without restart via the Settings page.
+
+### Architecture
+
+- `database.py` uses a `DatabaseManager` singleton (`db_manager`) with `swap(new_url)` method
+- All code uses `db_manager.engine` / `db_manager.session_factory` (never raw module globals)
+- `get_db()` dependency reads from the manager's current session factory
+- When user changes DB URL in Settings → `settings.py` calls `await db_manager.swap(new_url)`
+
+### Swap Flow
+
+```
+Settings PUT {database_url} → validate → test connection → create tables → dispose old engine
+                                  ↓ on failure
+                           revert to previous engine → return 400 error
+```
+
+**Important**: Never import `engine` or `AsyncSessionLocal` directly. Always use `db_manager.engine` or `db_manager.session_factory()`.
+
+## Multi-Environment Configuration
+
+| File | Purpose |
+|------|---------|
+| `backend/.env` | Active backend config (gitignored) |
+| `backend/.env.example` | Template with dev/docker/production examples |
+| `frontend/.env.local` | Active frontend config (gitignored) |
+| `frontend/.env.example` | Template with `NEXT_PUBLIC_*` vars |
+
+Frontend uses `NEXT_PUBLIC_API_URL` env var for API base URL (no hardcoded localhost).
 
 ## Database Models
 
@@ -152,7 +184,6 @@ Key models in `backend/app/models/models.py`:
 - `Telemetry` — Time-series sensor data (temperature, humidity, etc.)
 - `Alarm` — Alert rules and triggered alarms
 - `Command` — Commands sent to devices (fan, heater, etc.)
-- `AppSettings` — Runtime configuration (Gemini API key, model, features)
 
 ## MQTT Topics
 

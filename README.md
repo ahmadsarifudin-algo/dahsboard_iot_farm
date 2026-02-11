@@ -62,6 +62,11 @@ The platform supports multi-floor, multi-device configurations with different pr
 - **Hybrid Chart Generation** — Charts from both SQL queries and web search results
 - **SQL Preview** — View generated SQL queries for transparency
 
+### ⚙️ Settings & Configuration
+- **Hot-Swap Database** — Switch between SQLite and PostgreSQL at runtime via Settings page
+- **Multi-Environment** — `.env.example` templates for dev, Docker, staging, production
+- **Gemini Configuration** — API key and model selection via Settings UI
+
 ### 🎨 UI/UX
 - **Dark/Light Mode** — Full theme support with system preference detection
 - **Responsive Layout** — Auto-hide sidebar, collapsible navigation

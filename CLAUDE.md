@@ -28,8 +28,14 @@ Full-stack IoT monitoring dashboard for poultry farms with AI-powered data analy
 9. The **Business Expert** prompt must instruct Gemini to return structured JSON with `data`, `chart_type`, `x_key`, `y_keys` fields
 10. `analysis_service.py` has **two data paths** in `ask()`: SQL-based (local DB) and Search-based (Google Search) — changes must handle both
 11. After modifying `ROLE_DETECTION_KEYWORDS`, always test with `role_id: "auto"` to ensure correct routing
-12. Gemini API key is stored in `app_settings` DB table (not .env) — managed via Settings page
+12. Gemini API key is stored in `settings.json` (not .env) — managed via Settings page
 13. Search grounding is enabled only for roles with `uses_search: True` (currently only `business_expert`)
+
+## Database Rules (Critical)
+
+14. **Never import `engine` or `AsyncSessionLocal` directly** — always use `db_manager.engine` or `db_manager.session_factory()` from `app.core.database`
+15. Database supports **hot-swap** via Settings page — `db_manager.swap(new_url)` validates, creates tables, and reverts on failure
+16. Frontend API URLs use `NEXT_PUBLIC_API_URL` env var — never hardcode `localhost:8000`
 
 ## Running the Project
 
@@ -57,10 +63,15 @@ docker compose up -d
 
 ### Backend
 - `backend/main.py` — FastAPI entry point
+- `backend/app/core/database.py` — **DatabaseManager** with hot-swap `swap()` method
 - `backend/app/services/analysis_service.py` — **Core AI analysis engine** (ask, generate_response, chart building)
 - `backend/app/services/ai_roles.py` — **AI role definitions**, system prompts, keyword detection
 - `backend/app/api/analysis.py` — Analysis route handlers
-- `backend/app/api/settings.py` — Runtime settings (Gemini API key, model config)
+- `backend/app/api/settings.py` — Runtime settings (Gemini API key, model, DB URL hot-swap)
+
+### Environment Config
+- `backend/.env.example` — Backend environment template (dev/docker/production)
+- `frontend/.env.example` — Frontend environment template (`NEXT_PUBLIC_*` vars)
 
 ### Documentation
 - `docs/FARM_DATA_ANALYSIS_PLAYGROUND.md` — Full AI playground architecture & API reference

@@ -22,19 +22,37 @@ backend/
 ├── main.py                 # FastAPI app entry
 ├── requirements.txt        # Dependencies
 ├── app/
-│   ├── core/              # Config, database
+│   ├── core/              # Config, database, redis
+│   │   ├── config.py      #   Env-based config (pydantic-settings)
+│   │   ├── database.py    #   DatabaseManager with hot-swap
+│   │   └── app_settings.py#   Runtime settings (settings.json)
 │   ├── models/            # SQLAlchemy models
 │   ├── schemas/           # Pydantic schemas
 │   ├── api/               # REST endpoints
 │   │   ├── analysis.py    #   AI analysis routes
 │   │   ├── market_price.py#   Market price API
-│   │   └── settings.py    #   App settings API
+│   │   └── settings.py    #   App settings + DB hot-swap
 │   └── services/          # Business logic
 │       ├── analysis_service.py  # AI analysis engine
 │       ├── ai_roles.py          # AI role definitions & prompts
 │       ├── mqtt_service.py      # MQTT integration
 │       └── websocket_service.py # WebSocket handler
+├── .env                   # Active environment config (gitignored)
+├── .env.example           # Environment template
+└── settings.json          # Runtime settings (gitignored)
 ```
+
+## Database Hot-Swap
+
+The `DatabaseManager` class in `app/core/database.py` supports live database switching:
+
+```python
+# Triggered automatically when user changes DB URL in Settings page
+result = await db_manager.swap("postgresql+asyncpg://user:pass@host:5432/db")
+# Tests connection → creates tables → disposes old engine → or reverts on failure
+```
+
+All code uses `db_manager.session_factory()` instead of raw `AsyncSessionLocal`.
 
 ## AI Analysis Service
 
