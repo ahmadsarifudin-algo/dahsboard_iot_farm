@@ -1,4 +1,4 @@
-# Farm Data Analysis Playground (Concept & Design)
+# Farm Data Analysis Playground
 
 ## 1. Overview
 The **Farm Data Analysis Playground** is an interactive, AI-powered workspace where users can explore IoT and production data using natural language. It combines the flexibility of a spreadsheet interface with the power of generative AI to democratize data access.
@@ -6,169 +6,194 @@ The **Farm Data Analysis Playground** is an interactive, AI-powered workspace wh
 **Key Value Proposition:**
 - **Zero-code Analysis**: Ask questions in plain Indonesian/English ("Tampilkan rata-rata bobot ayam di Farm A minggu lalu").
 - **Deep Insights**: Correlation analysis between environmental factors (temperature, ammonia) and production metrics (IP, mortality).
-- **Secure**: Strict multi-tenant data isolation.
+- **Multi-Expert AI**: 4 specialized AI roles with automatic detection based on question context.
+- **Real-time Market Data**: Business Expert with Google Search grounding for live market prices and trends.
 
 ---
 
-## 2. User Experience (Wireframe)
+## 2. AI Expert Roles
 
-### Layout Structure
-```
-+----------------+-------------------------------------------------------------+-------------------------+
-|  SIDEBAR (L)   |                     MAIN WORKSPACE (Center)                 |      AI PANEL (R)       |
-+----------------+-------------------------------------------------------------+-------------------------+
-| [New Analysis] |  [ Toolbar: Filter | Pivot | Chart Type | Export ]          |                         |
-|                |                                                             |  [ Chat History ]       |
-| RECENT         |  +-------------------------------------------------------+  |                         |
-| - Performance  |  |  GRID VIEW (Excel-like)                               |  |  User: "Show daily    |
-|   Q1 2024      |  |  [Date] [Kandang] [Avg Temp] [Mortality] [FCR]        |  |  mortality vs temp"   |
-| - Temp Audit   |  |  2024-01-01  A1       28.5        12         1.4      |  |                         |
-|                |  |  2024-01-01  A2       29.1        15         1.5      |  |  AI: "Here is the     |
-| SAVED          |  |  ...                                                  |  |  data. I noticed a    |
-| - Monthly IP   |  +-------------------------------------------------------+  |  spike in mortality   |
-|                |                                                             |  when temp > 30C."    |
-| DATASETS       |  +-------------------------------------------------------+  |                         |
-| - Telemetry    |  |  VISUALIZATION (Split View)                           |  |  [ Suggested Actions ]|
-| - Harvests     |  |  [ Line Chart: Temp vs Mortality ]                    |  |  - "Add trendline"    |
-|                |  |                                                       |  |  - "Compare with B1"  |
-|                |  +-------------------------------------------------------+  |                         |
-+----------------+-------------------------------------------------------------+  [ Input Box ]          |
-+----------------+-------------------------------------------------------------+-------------------------+
-```
+The system uses a multi-role AI architecture. Each role has specialized knowledge and capabilities:
 
-### User Flow
-1. **Ask**: User types "Kenapa IP kandang B turun bulan ini?" in the AI Panel.
-2. **Process**: AI generates a SQL query focusing on `sites` and `performance_metrics` tables, filtered by User's permitted permissions.
-3. **Visualize**: System executes query (Read-Only) and renders a data grid + auto-selected chart (e.g., trend line).
-4. **Refine**: User clicks "Sort by Date" on grid or types "Breakdown daily" to pivot the data.
-5. **Save**: User saves the view as "Analisis Penurunan IP - Feb 2026".
+| Role | Icon | Capability | Data Source |
+|------|------|-----------|-------------|
+| **Data Analyst** | 📊 | SQL generation, IoT data visualization, statistics | Local Database (TimescaleDB) |
+| **Farm Management** | 🐔 | Coop management, SOP, feeding, environmental control | Local Database + Knowledge |
+| **Disease Expert** | 🦠 | Disease diagnosis, vaccination, biosecurity | Knowledge Base |
+| **Business Expert** | 💰 | Market prices, cost analysis, supply chain | **Google Search (real-time)** |
+
+### Auto-Detection
+When role is set to "Auto" (✨), the system automatically routes questions using keyword-based scoring:
+- Market/price queries → Business Expert
+- Temperature/sensor data → Data Analyst
+- Disease/mortality questions → Disease Expert
+- Farm operations → Farm Management
+
+Keywords are defined in `backend/app/services/ai_roles.py` → `ROLE_DETECTION_KEYWORDS`.
 
 ---
 
 ## 3. Architecture
 
-### Tech Stack
-- **Frontend**: Next.js 14, `ag-grid-react` (or `tanstack-table`), `recharts`, `framer-motion`.
-- **Backend API**: FastAPI (Python) - handling SQL generation and execution.
-- **Database**: TimescaleDB (Postgres extension) for high-performance time-series queries.
-- **AI Engine**: Google Gemini Pro (via Vertex AI or AI Studio) - strong at SQL generation and reasoning.
-
 ### Data Flow
-1. **NL Request** -> **Backend Analysis Service** -> **Gemini (Prompt + Schema)** -> **SQL Query**.
-2. **SQL Query** -> **Security Middleware (SQL Guardrails + RLS)** -> **Read-Only DB Connection**.
-3. **Result Set** -> **Backend** -> **Frontend (Grid/Chart)**.
 
----
-
-## 4. Database Schema (Additions)
-
-Existing tables (`telemetry`, `devices`, `sites`) will be queried. New tables needed for the Playground features:
-
-```sql
--- Workspaces for organizing analysis
-CREATE TABLE analysis_workspaces (
-    id UUID PRIMARY KEY,
-    user_id UUID NOT NULL,
-    name VARCHAR(255),
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Saved Analysis/Queries
-CREATE TABLE saved_analysis (
-    id UUID PRIMARY KEY,
-    workspace_id UUID REFERENCES analysis_workspaces(id),
-    title VARCHAR(255),
-    description TEXT,
-    
-    -- AI Context
-    natural_language_query TEXT,
-    
-    -- Technical Context
-    generated_sql TEXT,
-    visualization_config JSONB, -- { type: 'line', x: 'time', y: 'value' }
-    
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- RBAC / Access Control (Mock concept for now if User table missing)
-CREATE TABLE user_site_access (
-    user_id UUID,
-    site_id UUID REFERENCES sites(id),
-    role VARCHAR(50), -- 'viewer', 'editor'
-    PRIMARY KEY (user_id, site_id)
-);
+```
+┌──────────────────────────────────────────────────────────┐
+│                    Frontend (Next.js)                      │
+│  ┌─────────┐  ┌──────────┐  ┌───────────┐  ┌──────────┐ │
+│  │Chat Panel│  │ChartView │  │DataTable  │  │InsightCards│ │
+│  └────┬─────┘  └─────▲────┘  └─────▲─────┘  └─────▲─────┘ │
+│       │              │             │              │        │
+│       ▼              └─────────────┴──────────────┘        │
+│  POST /api/v1/analysis/ask                                 │
+└──────────────────┬───────────────────────────────────────┘
+                   │
+┌──────────────────▼───────────────────────────────────────┐
+│                Backend (FastAPI)                           │
+│                                                           │
+│  ┌─────────────────────────────────────────────────────┐ │
+│  │              AnalysisService.ask()                    │ │
+│  │                                                       │ │
+│  │  1. detect_role(question) → role_id                  │ │
+│  │  2. generate_response(question, role_id)              │ │
+│  │     ├─ SQL roles → Gemini generates SQL               │ │
+│  │     └─ Search roles → Gemini + Google Search          │ │
+│  │  3. Build chart_config + data                         │ │
+│  │     ├─ SQL path: execute_query → chart_config         │ │
+│  │     └─ Search path: parse data → chart_config         │ │
+│  │  4. Return structured response                        │ │
+│  └─────────────────────────────────────────────────────┘ │
+│                                                           │
+│  ┌──────────────┐  ┌──────────────┐  ┌────────────────┐ │
+│  │ TimescaleDB   │  │ Gemini API   │  │ Google Search  │ │
+│  │ (IoT data)    │  │ (AI engine)  │  │ (market data)  │ │
+│  └──────────────┘  └──────────────┘  └────────────────┘ │
+└───────────────────────────────────────────────────────────┘
 ```
 
----
-
-## 5. Security & RBAC (Critical)
-
-### 1. Row Level Security (RLS) or Query Injection
-Since we generate SQL, we must ensure users don't query data they don't own.
-*   **Approach**: Before executing the generated SQL, the backend parses the AST (using `sqlglot` or similar) and enforces a `WHERE site_id IN (...)` clause matches the user's token claims.
-
-### 2. Read-Only Database User
-The connection used by the Analysis Service must be a **Postgres Read-Only User**.
-*   `GRANT SELECT ON ALL TABLES IN SCHEMA public TO analysis_user;`
-*   Block `INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`.
-
-### 3. AI Guardrails
-System prompt must explicitly forbid:
-*   Queries about system tables (`pg_shadow`, `information_schema`).
-*   Aggregations that might DOS the DB (enforce `LIMIT 1000`).
+### Tech Stack
+- **Frontend**: Next.js 14, Recharts, Lucide Icons
+- **Backend API**: FastAPI (Python)
+- **Database**: SQLite (development) / TimescaleDB (production)
+- **AI Engine**: Google Gemini 2.0 Flash (via `google-genai` SDK)
+- **Search Grounding**: Google Search via Gemini Search tool
 
 ---
 
-## 6. API Routes (Draft)
+## 4. API Endpoints
 
-### Analysis Endpoints
-*   `POST /api/v1/analysis/ask`:
-    *   Input: `{ message: "Show me temperature history", context_id: "..." }`
-    *   Output: `{ answer: "Here is the data...", sql: "SELECT...", data: [...], chart_config: {...} }`
-*   `POST /api/v1/analysis/execute`:
-    *   Execute a specific SQL (only if validated).
-*   `GET /api/v1/analysis/history`: Get chat history.
+### `POST /api/v1/analysis/ask`
 
-### Workspace Endpoints
-*   `GET /api/v1/workspaces`: List user workspaces.
-*   `POST /api/v1/workspaces/{id}/save`: Save current analysis.
+Main analysis endpoint. Accepts natural language questions and returns structured data.
 
----
-
-## 7. AI & Gemini Integration
-
-### System Prompt Strategy
-```text
-You are an expert data analyst for a Poultry Farm IoT platform.
-Your goal is to convert natural language questions into efficient PostgreSQL/TimescaleDB queries.
-You have access to these tables:
-- sites (id, name, region)
-- devices (id, site_id, type, status)
-- telemetry (time, device_id, metric, value)
-
-RULES:
-1. ALWAYS allow filtering by 'site_id'.
-2. Return JSON with 'sql', 'explanation', and 'suggested_chart_type'.
-3. Use time_bucket('1 hour', time) for aggregations over long periods.
-4. If the user asks clearly hazardous things (DROP TABLE), refuse.
+**Request:**
+```json
+{
+    "message": "buatkan grafik harga ayam satu tahun di solo",
+    "role_id": "auto",
+    "session_id": "session-123"
+}
 ```
 
+**Response:**
+```json
+{
+    "answer": "Berikut grafik harga ayam broiler di Solo...",
+    "analysis": "Tren menunjukkan kenaikan pada Q4...",
+    "sql": "",
+    "data": [
+        {"bulan": "Jan 2025", "harga": 19500},
+        {"bulan": "Feb 2025", "harga": 20000}
+    ],
+    "chart_config": {
+        "type": "line",
+        "xKey": "bulan",
+        "yKeys": ["harga"],
+        "colors": ["#f59e0b"]
+    },
+    "insight_cards": [
+        {"title": "Harga Tertinggi", "value": "Rp 24.500", "change": "Desember", "icon": "trend"}
+    ],
+    "anomalies": [],
+    "follow_up_questions": ["Bandingkan harga Solo vs Semarang"],
+    "severity": "normal",
+    "stats": {"harga": {"count": 12, "min": 19500, "max": 26500, "avg": 22000}},
+    "role": {"id": "business_expert", "name": "Business Expert", "icon": "💰", "color": "#f59e0b"},
+    "grounding_sources": [{"title": "chickin.id", "uri": "https://..."}]
+}
+```
+
+### `GET /api/v1/analysis/roles`
+Returns available AI roles.
+
+### `GET /api/v1/analysis/summary`
+Returns current farm summary (device status, alarms, latest metrics).
+
 ---
 
-## 8. Implementation Milestones
+## 5. Chart Generation (Hybrid Approach)
 
-### Phase 1: MVP (Proof of Concept)
-*   **UI**: Simple chat interface + Read-only Data Table.
-*   **Backend**: Basic Text-to-SQL for `telemetry` table only.
-*   **Security**: Hardcoded `LIMIT 100` on all queries. No saved workspaces yet.
-*   **Goal**: Demonstrate "Ask -> Get Data" flow.
+The system supports two data sources for chart generation:
 
-### Phase 2: Visualization & Refinement
-*   **UI**: Add Charts (Recharts) customized by AI response.
-*   **Backend**: Robust SQL injection guard (sqlglot).
-*   **Feature**: "Explain this data" (AI analyzes the result set row-by-row).
+### Path A: SQL-Based (Data Analyst, Farm Management)
+```
+Question → Gemini generates SQL → Execute on DB → chart_config from data columns
+```
 
-### Phase 3: The "Playground"
-*   **UI**: Excel-like features (Pivot, Filter in UI).
-*   **Feature**: Saved Workspaces & Sharing.
-*   **Data**: Join with production data (feed, harvest, mortality).
+### Path B: Search-Based (Business Expert)
+```
+Question → Gemini + Google Search → Extract price data → chart_config from JSON response
+```
+
+The Business Expert prompt instructs Gemini to return structured JSON with:
+- `data`: Array of objects with chartable values (numeric, not strings)
+- `chart_type`: "line" for trends, "bar" for comparisons
+- `x_key` / `y_keys` / `colors`: Chart configuration hints
+
+The backend (`analysis_service.py`) processes both paths identically:
+1. Clean and validate data rows
+2. Auto-detect keys if not provided
+3. Build `chart_config` for frontend rendering
+4. Compute statistics (`min`, `max`, `avg`, `stdev`)
+
+### Frontend Chart Rendering
+The `ChartView` component in `frontend/app/analysis/page.tsx` renders charts using Recharts:
+- Supports `line`, `bar`, and `area` chart types
+- Users can toggle chart type via toolbar buttons
+- Data is also displayed in a `DataTable` component
+
+---
+
+## 6. Security
+
+### SQL Guardrails
+- Read-only database connections
+- `LIMIT 500` enforced on all queries
+- Dangerous keywords blocked (`DROP`, `DELETE`, `INSERT`, `ALTER`)
+- SQL validation before execution
+
+### AI Guardrails
+- System prompts explicitly forbid system table queries
+- Role-based prompt isolation
+- Session-based conversation memory
+
+---
+
+## 7. Key Files
+
+| File | Purpose |
+|------|---------|
+| `backend/app/services/analysis_service.py` | Core analysis logic (ask, generate_response, execute_query) |
+| `backend/app/services/ai_roles.py` | AI role definitions, prompts, keyword detection |
+| `backend/app/api/analysis.py` | API route handlers |
+| `frontend/app/analysis/page.tsx` | Full playground UI (chat, charts, tables, insight cards) |
+
+---
+
+## 8. Implementation Status
+
+- [x] **Phase 1 — MVP**: Chat interface + SQL query + data table
+- [x] **Phase 2 — Visualization**: Recharts integration, auto chart config
+- [x] **Phase 2.5 — Multi-Role AI**: 4 expert roles with auto-detection
+- [x] **Phase 2.6 — Hybrid Charts**: Search-grounded data → chart rendering (Business Expert)
+- [ ] **Phase 3 — Playground**: Excel-like features, saved workspaces, sharing

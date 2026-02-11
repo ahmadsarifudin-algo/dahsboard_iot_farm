@@ -15,6 +15,7 @@ import {
     BarChart3
 } from 'lucide-react'
 import KandangPerformanceList from '@/components/dashboard/KandangPerformanceList'
+import DataPlayground from '@/components/dashboard/DataPlayground'
 import { api } from '@/lib/api'
 import { useWebSocket } from '@/lib/websocket'
 import { useStore } from '@/lib/store'
@@ -323,6 +324,9 @@ export default function OverviewPage() {
             <div className="card">
                 <KandangPerformanceList />
             </div>
+
+            {/* Data Playground - Market Intelligence */}
+            <DataPlayground />
         </div>
     )
 }

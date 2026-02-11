@@ -1,5 +1,6 @@
 """
 WebSocket Service for real-time browser updates.
+Gracefully degrades when Redis is not available.
 """
 import json
 import asyncio
@@ -35,7 +36,6 @@ class WebSocketManager:
             except Exception:
                 disconnected.append(connection)
         
-        # Clean up disconnected clients
         for conn in disconnected:
             self.disconnect(conn)
     
@@ -48,11 +48,17 @@ class WebSocketManager:
     
     async def start_redis_subscriber(self):
         """Subscribe to Redis events and broadcast to WebSocket clients."""
-        self._running = True
+        if not redis_manager.is_connected:
+            print("WebSocket: Redis not available, skipping Redis subscriber")
+            return
         
+        self._running = True
         while self._running:
             try:
                 pubsub = await redis_manager.subscribe("ws:events")
+                if pubsub is None:
+                    print("WebSocket: Could not subscribe to Redis, stopping subscriber")
+                    return
                 
                 while self._running:
                     message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
@@ -79,14 +85,11 @@ async def websocket_endpoint(websocket: WebSocket):
     
     try:
         while True:
-            # Keep connection alive and handle client messages
             data = await websocket.receive_text()
             
             try:
                 message = json.loads(data)
-                # Handle client subscription requests
                 if message.get("action") == "subscribe":
-                    # Could implement filtered subscriptions here
                     await ws_manager.send_to_client(
                         websocket, 
                         json.dumps({"type": "subscribed", "payload": message.get("topics", [])})

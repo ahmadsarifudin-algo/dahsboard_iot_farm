@@ -54,8 +54,12 @@ The platform supports multi-floor, multi-device configurations with different pr
 - **Alarm Management** — Configure and monitor device alarms with rule-based triggers
 
 ### 🤖 AI Data Playground
+- **Multi-Expert AI System** — 4 specialized roles: Data Analyst 📊, Farm Expert 🐔, Disease Expert 🦠, Business Expert 💰
 - **Natural Language Queries** — Ask questions about farm data in Bahasa Indonesia
+- **Auto Role Detection** — Automatically routes questions to the right expert
 - **Auto Visualization** — AI generates charts, tables, and insight cards
+- **Real-time Market Data** — Business Expert uses Google Search for live market prices
+- **Hybrid Chart Generation** — Charts from both SQL queries and web search results
 - **SQL Preview** — View generated SQL queries for transparency
 
 ### 🎨 UI/UX
@@ -347,6 +351,9 @@ Once the backend is running, interactive API docs are available at:
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/v1/auth/login` | User authentication |
+| POST | `/api/v1/analysis/ask` | AI-powered data analysis (NL → SQL/Search → Chart) |
+| GET | `/api/v1/analysis/roles` | List available AI expert roles |
+| GET | `/api/v1/analysis/summary` | Farm data summary |
 | GET | `/api/v1/kandang` | List all kandang |
 | POST | `/api/v1/kandang` | Create new kandang |
 | GET | `/api/v1/kandang/{id}` | Get kandang detail |
@@ -356,6 +363,7 @@ Once the backend is running, interactive API docs are available at:
 | GET | `/api/v1/alarms` | List alarms |
 
 For complete API reference, see [`docs/IOT_API.md`](docs/IOT_API.md).
+For AI Playground details, see [`docs/FARM_DATA_ANALYSIS_PLAYGROUND.md`](docs/FARM_DATA_ANALYSIS_PLAYGROUND.md).
 
 ---
 

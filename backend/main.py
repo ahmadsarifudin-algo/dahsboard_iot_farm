@@ -26,17 +26,16 @@ async def lifespan(app: FastAPI):
     await init_db()
     print("Database initialized")
     
-    # Connect to Redis
+    # Connect to Redis (optional)
     await redis_manager.connect()
-    print("Redis connected")
     
-    # Start MQTT subscriber in background
+    # Start MQTT subscriber in background (optional)
     mqtt_task = asyncio.create_task(mqtt_service.start())
     
-    # Start WebSocket Redis subscriber in background
+    # Start WebSocket Redis subscriber in background (only if Redis available)
     ws_task = asyncio.create_task(ws_manager.start_redis_subscriber())
     
-    print("MQTT and WebSocket services started")
+    print("Services started")
     print(f"API running at http://localhost:8000{settings.api_v1_prefix}")
     
     yield
@@ -88,7 +87,9 @@ async def health_check():
     return {
         "status": "healthy",
         "service": settings.app_name,
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "redis": "connected" if redis_manager.is_connected else "in-memory fallback",
+        "mqtt": "enabled" if settings.mqtt_enabled else "disabled",
     }
 
 

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
     Sparkles, Send, Table2, BarChart3, MessageSquare, Loader2,
     Download, Trash2, ChevronRight, Database, Clock, X,
-    ThermometerSun, Droplets, Wind, Bug, TrendingUp, AlertTriangle
+    ThermometerSun, Droplets, Wind, Bug, TrendingUp, AlertTriangle, ExternalLink, Search
 } from 'lucide-react'
 import {
     BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -20,7 +20,21 @@ interface ChatMessage {
     data?: Record<string, any>[]
     chartConfig?: { type: 'bar' | 'line' | 'area'; xKey: string; yKeys: string[]; colors: string[] }
     insightCards?: { title: string; value: string; change?: string; icon: string }[]
+    anomalies?: string[]
+    followUpQuestions?: string[]
+    analysis?: string
+    severity?: 'normal' | 'warning' | 'critical'
+    aiRole?: { id: string; name: string; icon: string; color: string }
+    groundingSources?: { title: string; uri: string }[]
     timestamp: Date
+}
+
+interface AIRole {
+    id: string
+    name: string
+    icon: string
+    description: string
+    color: string
 }
 
 interface SavedQuery {
@@ -227,6 +241,15 @@ export default function AnalysisPlaygroundPage() {
     const [activeMessage, setActiveMessage] = useState<ChatMessage | null>(null)
     const [showSql, setShowSql] = useState<string | null>(null)
     const chatEndRef = useRef<HTMLDivElement>(null)
+    const [sessionId] = useState(() => `session-${Date.now()}`)
+    const [activeRole, setActiveRole] = useState<string>('auto')
+    const [roles] = useState<AIRole[]>([
+        { id: 'auto', name: 'Auto', icon: '✨', description: 'Otomatis pilih expert', color: '#8b5cf6' },
+        { id: 'data_analyst', name: 'Data Analyst', icon: '📊', description: 'Query & visualisasi data', color: '#8b5cf6' },
+        { id: 'farm_management', name: 'Farm Expert', icon: '🐔', description: 'Manajemen kandang', color: '#22c55e' },
+        { id: 'disease_expert', name: 'Disease Expert', icon: '🦠', description: 'Diagnosa penyakit', color: '#ef4444' },
+        { id: 'business_expert', name: 'Business', icon: '💰', description: 'Harga & pasar (web search)', color: '#f59e0b' },
+    ])
 
     const [savedQueries] = useState<SavedQuery[]>([
         { id: 'sq-1', title: 'Suhu Mingguan', query: 'Tampilkan suhu rata-rata per kandang', timestamp: new Date('2026-02-08') },
@@ -250,10 +273,63 @@ export default function AnalysisPlaygroundPage() {
         setInput('')
         setIsLoading(true)
 
-        // Simulate AI delay
-        await new Promise(r => setTimeout(r, 1500 + Math.random() * 1000))
+        let response: Omit<ChatMessage, 'id' | 'role' | 'timestamp'>
 
-        const response = matchResponse(userMsg.content)
+        try {
+            // Try real backend API first
+            const res = await fetch('http://localhost:8000/api/v1/analysis/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: userMsg.content, session_id: sessionId, role_id: activeRole }),
+            })
+
+            if (res.ok) {
+                const data = await res.json()
+                response = {
+                    content: data.answer || 'Data berhasil diambil.',
+                    analysis: data.analysis || undefined,
+                    sql: data.sql || undefined,
+                    data: data.data && data.data.length > 0 ? data.data : undefined,
+                    chartConfig: data.chart_config ? {
+                        type: data.chart_config.type || 'bar',
+                        xKey: data.chart_config.xKey || '',
+                        yKeys: data.chart_config.yKeys || [],
+                        colors: data.chart_config.colors || ['#22c55e'],
+                    } : undefined,
+                    insightCards: data.insight_cards || undefined,
+                    anomalies: data.anomalies && data.anomalies.length > 0 ? data.anomalies : undefined,
+                    followUpQuestions: data.follow_up_questions || undefined,
+                    severity: data.severity || 'normal',
+                    aiRole: data.role || undefined,
+                    groundingSources: data.grounding_sources && data.grounding_sources.length > 0 ? data.grounding_sources : undefined,
+                }
+            } else {
+                const err = await res.json().catch(() => ({ detail: 'API error' }))
+                if (err.detail?.includes('Gemini API key not configured')) {
+                    response = {
+                        content: '⚠️ **Gemini API key belum dikonfigurasi.** Silakan buka [Settings → AI Configuration](/settings) untuk menambahkan API key Anda.',
+                    }
+                } else if (err.detail?.includes('429') || err.detail?.includes('Resource exhausted')) {
+                    response = {
+                        content: '⏳ **API rate limit tercapai.** Gemini API sedang sibuk, coba lagi dalam 30-60 detik.\n\nTips: Kurangi frekuensi pertanyaan atau upgrade API plan Anda.',
+                        severity: 'warning',
+                    }
+                } else {
+                    response = {
+                        content: `❌ **Error dari server:** ${err.detail || 'Terjadi kesalahan'}\n\nSilakan coba lagi.`,
+                        severity: 'warning',
+                    }
+                }
+            }
+        } catch (e) {
+            // API not available
+            console.warn('Analysis API unavailable:', e)
+            response = {
+                content: '🔌 **Server tidak tersedia.** Backend API tidak dapat dijangkau di `localhost:8000`.\n\nPastikan backend server sedang berjalan.',
+                severity: 'warning',
+            }
+        }
+
         const assistantMsg: ChatMessage = {
             id: `msg-${Date.now() + 1}`,
             role: 'assistant',
@@ -270,32 +346,80 @@ export default function AnalysisPlaygroundPage() {
 
     function handleQuickAction(query: string) {
         setInput(query)
-        // Auto-send after a short delay
         setTimeout(() => {
             setInput('')
-            const userMsg: ChatMessage = {
-                id: `msg-${Date.now()}`,
-                role: 'user',
-                content: query,
-                timestamp: new Date(),
-            }
-            setMessages(prev => [...prev, userMsg])
-            setIsLoading(true)
+            handleSendMessage(query)
+        }, 150)
+    }
 
-            setTimeout(() => {
-                const response = matchResponse(query)
-                const assistantMsg: ChatMessage = {
-                    id: `msg-${Date.now() + 1}`,
-                    role: 'assistant',
-                    ...response,
-                    timestamp: new Date(),
+    async function handleSendMessage(content: string) {
+        const userMsg: ChatMessage = {
+            id: `msg-${Date.now()}`,
+            role: 'user',
+            content,
+            timestamp: new Date(),
+        }
+        setMessages(prev => [...prev, userMsg])
+        setIsLoading(true)
+
+        let response: Omit<ChatMessage, 'id' | 'role' | 'timestamp'>
+        try {
+            const res = await fetch('http://localhost:8000/api/v1/analysis/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: content, session_id: sessionId, role_id: activeRole }),
+            })
+            if (res.ok) {
+                const data = await res.json()
+                response = {
+                    content: data.answer || 'Data berhasil diambil.',
+                    analysis: data.analysis || undefined,
+                    sql: data.sql || undefined,
+                    data: data.data?.length > 0 ? data.data : undefined,
+                    chartConfig: data.chart_config ? {
+                        type: data.chart_config.type || 'bar',
+                        xKey: data.chart_config.xKey || '',
+                        yKeys: data.chart_config.yKeys || [],
+                        colors: data.chart_config.colors || ['#22c55e'],
+                    } : undefined,
+                    insightCards: data.insight_cards || undefined,
+                    anomalies: data.anomalies?.length > 0 ? data.anomalies : undefined,
+                    followUpQuestions: data.follow_up_questions || undefined,
+                    severity: data.severity || 'normal',
+                    aiRole: data.role || undefined,
+                    groundingSources: data.grounding_sources && data.grounding_sources.length > 0 ? data.grounding_sources : undefined,
                 }
-                setMessages(prev => [...prev, assistantMsg])
-                setActiveMessage(assistantMsg)
-                if (assistantMsg.data) setActiveView('chart')
-                setIsLoading(false)
-            }, 1500 + Math.random() * 1000)
-        }, 200)
+            } else {
+                const err = await res.json().catch(() => ({ detail: 'API error' }))
+                if (err.detail?.includes('429') || err.detail?.includes('Resource exhausted')) {
+                    response = {
+                        content: '⏳ **API rate limit tercapai.** Coba lagi dalam 30-60 detik.',
+                        severity: 'warning',
+                    }
+                } else {
+                    response = {
+                        content: `❌ **Error:** ${err.detail || 'Terjadi kesalahan'}`,
+                        severity: 'warning',
+                    }
+                }
+            }
+        } catch {
+            response = {
+                content: '🔌 **Server tidak tersedia.** Backend API tidak dapat dijangkau.',
+                severity: 'warning',
+            }
+        }
+
+        const assistantMsg: ChatMessage = {
+            id: `msg-${Date.now() + 1}`,
+            role: 'assistant',
+            ...response,
+            timestamp: new Date(),
+        }
+        setMessages(prev => [...prev, assistantMsg])
+        setActiveMessage(assistantMsg)
+        if (assistantMsg.data) setActiveView('chart')
+        setIsLoading(false)
     }
 
     return (
@@ -452,14 +576,35 @@ export default function AnalysisPlaygroundPage() {
             <div className="w-[380px] min-w-[320px] flex flex-col bg-dark-300 rounded-2xl border border-dark-100 overflow-hidden">
                 {/* Header */}
                 <div className="p-4 border-b border-dark-100">
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 mb-3">
                         <div className="p-2 rounded-xl bg-gradient-to-br from-violet-500/20 to-blue-500/20 border border-violet-500/30">
                             <Sparkles className="w-5 h-5 text-violet-400" />
                         </div>
                         <div>
-                            <h2 className="text-sm font-semibold text-white">Farm AI Assistant</h2>
+                            <h2 className="text-sm font-semibold text-white">FarmAI Expert System</h2>
                             <p className="text-xs text-gray-500">Powered by Gemini</p>
                         </div>
+                    </div>
+                    {/* Role Selector */}
+                    <div className="flex gap-1.5 flex-wrap">
+                        {roles.map(r => (
+                            <button
+                                key={r.id}
+                                onClick={() => setActiveRole(r.id)}
+                                title={r.description}
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${activeRole === r.id
+                                    ? 'text-white shadow-sm border'
+                                    : 'bg-dark-400 text-gray-400 hover:text-gray-200 border border-transparent hover:border-dark-100'
+                                    }`}
+                                style={activeRole === r.id ? {
+                                    backgroundColor: `${r.color}20`,
+                                    borderColor: `${r.color}50`,
+                                    color: r.color,
+                                } : {}}
+                            >
+                                <span className="mr-1">{r.icon}</span>{r.name}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
@@ -486,12 +631,21 @@ export default function AnalysisPlaygroundPage() {
                         <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[90%] rounded-2xl px-4 py-3 ${msg.role === 'user'
                                 ? 'bg-primary-600 text-white rounded-br-md'
-                                : 'bg-dark-400 text-gray-200 rounded-bl-md border border-dark-100'
+                                : `bg-dark-400 text-gray-200 rounded-bl-md border ${msg.severity === 'critical' ? 'border-red-500/40' : msg.severity === 'warning' ? 'border-amber-500/30' : 'border-dark-100'}`
                                 }`}>
                                 {msg.role === 'assistant' && (
                                     <div className="flex items-center space-x-1.5 mb-2">
-                                        <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-                                        <span className="text-xs font-medium text-violet-400">AI</span>
+                                        {msg.aiRole ? (
+                                            <>
+                                                <span className="text-sm">{msg.aiRole.icon}</span>
+                                                <span className="text-xs font-medium" style={{ color: msg.aiRole.color }}>{msg.aiRole.name}</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+                                                <span className="text-xs font-medium text-violet-400">AI</span>
+                                            </>
+                                        )}
                                     </div>
                                 )}
                                 <div className="text-sm whitespace-pre-wrap leading-relaxed" dangerouslySetInnerHTML={{
@@ -522,6 +676,63 @@ export default function AnalysisPlaygroundPage() {
                                     <div className="mt-3 grid grid-cols-2 gap-2">
                                         {msg.insightCards.map((card, i) => (
                                             <InsightCard key={i} {...card} />
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Analysis Text */}
+                                {msg.analysis && (
+                                    <div className="mt-2 p-2.5 rounded-lg bg-dark-500/50 border border-dark-100">
+                                        <p className="text-xs text-gray-300 whitespace-pre-wrap">{msg.analysis}</p>
+                                    </div>
+                                )}
+
+                                {/* Anomalies */}
+                                {msg.anomalies && msg.anomalies.length > 0 && (
+                                    <div className="mt-2 space-y-1">
+                                        {msg.anomalies.map((a, i) => (
+                                            <div key={i} className="flex items-start space-x-1.5 p-2 rounded-lg bg-red-500/5 border border-red-500/20 text-xs text-red-300">
+                                                <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                                <span>{a}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Grounding Sources (web search citations) */}
+                                {msg.groundingSources && msg.groundingSources.length > 0 && (
+                                    <div className="mt-2.5 p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                                        <div className="flex items-center space-x-1.5 mb-1.5">
+                                            <Search className="w-3 h-3 text-amber-400" />
+                                            <span className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">Sumber Web</span>
+                                        </div>
+                                        <div className="space-y-1">
+                                            {msg.groundingSources.map((src, i) => (
+                                                <a
+                                                    key={i}
+                                                    href={src.uri}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center space-x-1.5 text-[11px] text-blue-400 hover:text-blue-300 transition-colors group"
+                                                >
+                                                    <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-60 group-hover:opacity-100" />
+                                                    <span className="truncate">{src.title || src.uri}</span>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {/* Follow-up Questions */}
+                                {msg.followUpQuestions && msg.followUpQuestions.length > 0 && (
+                                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                                        {msg.followUpQuestions.map((q, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => handleQuickAction(q)}
+                                                className="px-2.5 py-1 rounded-full text-[10px] font-medium bg-violet-600/10 text-violet-300 hover:bg-violet-600/20 border border-violet-500/20 transition-all"
+                                            >
+                                                {q}
+                                            </button>
                                         ))}
                                     </div>
                                 )}

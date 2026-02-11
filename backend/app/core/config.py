@@ -13,18 +13,20 @@ class Settings(BaseSettings):
     debug: bool = False
     api_v1_prefix: str = "/api/v1"
     
-    # Database - PostgreSQL/TimescaleDB
-    database_url: str = "postgresql+asyncpg://iot_user:iot_password@localhost:5432/iot_dashboard"
+    # Database - SQLite for local dev, PostgreSQL for production
+    database_url: str = "sqlite+aiosqlite:///./iot_dashboard.db"
     
-    # Redis
+    # Redis (optional for local dev)
     redis_url: str = "redis://localhost:6379"
+    redis_enabled: bool = False
     
-    # MQTT - EMQX
+    # MQTT - EMQX (optional for local dev)
     mqtt_broker: str = "localhost"
     mqtt_port: int = 1883
     mqtt_username: str = ""
     mqtt_password: str = ""
     mqtt_client_id: str = "iot-backend"
+    mqtt_enabled: bool = False
     
     # JWT
     jwt_secret_key: str = "your-secret-key-change-in-production"

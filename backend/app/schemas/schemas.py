@@ -47,7 +47,7 @@ class DeviceBase(BaseModel):
     type: str = Field(..., min_length=1, max_length=50)
     site_id: Optional[str] = None
     firmware: Optional[str] = None
-    metadata: dict = Field(default_factory=dict)
+    meta_data: dict = Field(default_factory=dict)
 
 
 class DeviceCreate(DeviceBase):
@@ -59,7 +59,7 @@ class DeviceUpdate(BaseModel):
     type: Optional[str] = None
     site_id: Optional[str] = None
     firmware: Optional[str] = None
-    metadata: Optional[dict] = None
+    meta_data: Optional[dict] = None
     shadow_desired: Optional[dict] = None
 
 
@@ -81,7 +81,7 @@ class DeviceResponse(BaseModel):
 class DeviceDetail(DeviceResponse):
     shadow_desired: dict = {}
     shadow_reported: dict = {}
-    metadata: dict = {}
+    meta_data: dict = {}
     site: Optional[SiteResponse] = None
 
 
