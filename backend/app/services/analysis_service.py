@@ -412,7 +412,7 @@ class AnalysisService:
     async def execute_query(self, sql: str) -> list[dict]:
         """Execute a read-only SQL query against the database."""
         from sqlalchemy import text
-        from app.core.database import AsyncSessionLocal
+        from app.core.database import db_manager
 
         is_valid, result = self.validate_sql(sql)
         if not is_valid:
@@ -420,7 +420,7 @@ class AnalysisService:
 
         sql = result
 
-        async with AsyncSessionLocal() as session:
+        async with db_manager.session_factory() as session:
             try:
                 result = await session.execute(text(sql))
                 columns = list(result.keys())
@@ -696,10 +696,10 @@ class AnalysisService:
     async def get_summary(self) -> dict:
         """Get a quick farm summary without needing a question."""
         from sqlalchemy import text
-        from app.core.database import AsyncSessionLocal
+        from app.core.database import db_manager
 
         summary = {}
-        async with AsyncSessionLocal() as session:
+        async with db_manager.session_factory() as session:
             try:
                 # Device counts
                 r = await session.execute(text(

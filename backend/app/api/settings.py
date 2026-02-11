@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from app.core.app_settings import app_settings, AVAILABLE_MODELS
+from app.core.database import db_manager
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
 
@@ -25,23 +26,43 @@ async def get_settings():
     """Get current settings (API key masked)."""
     settings = app_settings.get_masked()
     settings["database_type"] = app_settings.get_database_type()
+    settings["database_url"] = db_manager.current_url
     settings["available_models"] = AVAILABLE_MODELS
     return settings
 
 
 @router.put("")
 async def update_settings(body: SettingsUpdate):
-    """Update settings."""
+    """Update settings. If database_url changes, hot-swap the database."""
     updates = body.dict(exclude_none=True)
     if not updates:
         raise HTTPException(status_code=400, detail="No settings to update")
 
-    updated = app_settings.update(updates)
+    db_swap_result = None
+
+    # Hot-swap database if URL changed
+    if "database_url" in updates and updates["database_url"] != db_manager.current_url:
+        db_swap_result = await db_manager.swap(updates["database_url"])
+        if not db_swap_result["success"]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Database switch failed: {db_swap_result['message']}. Settings NOT saved."
+            )
+
+    # Save all settings to settings.json
+    app_settings.update(updates)
+
     # Return masked version
     result = app_settings.get_masked()
     result["database_type"] = app_settings.get_database_type()
+    result["database_url"] = db_manager.current_url
     result["available_models"] = AVAILABLE_MODELS
-    return {"message": "Settings updated successfully", "settings": result}
+
+    message = "Settings updated successfully"
+    if db_swap_result:
+        message += f". {db_swap_result['message']}"
+
+    return {"message": message, "settings": result}
 
 
 @router.get("/models")
@@ -73,24 +94,23 @@ async def test_gemini_connection(body: TestConnectionRequest):
 
 @router.post("/test-db")
 async def test_database_connection(body: TestConnectionRequest):
-    """Test database connection with provided URL."""
-    db_url = body.database_url or app_settings.get("database_url")
+    """Test database connection with provided URL (without switching)."""
+    db_url = body.database_url or db_manager.current_url
     if not db_url:
         raise HTTPException(status_code=400, detail="No database URL provided")
 
     try:
         from sqlalchemy.ext.asyncio import create_async_engine
+        import sqlalchemy
 
         kwargs = {}
         if "sqlite" in db_url:
             kwargs["connect_args"] = {"check_same_thread": False}
 
-        engine = create_async_engine(db_url, **kwargs)
-        async with engine.connect() as conn:
-            await conn.execute(
-                __import__("sqlalchemy").text("SELECT 1")
-            )
-        await engine.dispose()
+        test_engine = create_async_engine(db_url, **kwargs)
+        async with test_engine.connect() as conn:
+            await conn.execute(sqlalchemy.text("SELECT 1"))
+        await test_engine.dispose()
 
         db_type = "SQLite" if "sqlite" in db_url else "PostgreSQL" if "postgres" in db_url else "Unknown"
         return {

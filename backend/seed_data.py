@@ -11,7 +11,7 @@ from uuid import uuid4
 import sys
 sys.path.insert(0, ".")
 
-from app.core.database import AsyncSessionLocal, init_db
+from app.core.database import db_manager, init_db
 from app.models.models import Site, Device, Telemetry, Alarm
 
 
@@ -48,7 +48,7 @@ async def seed():
     await init_db()
     print("Database initialized.")
 
-    async with AsyncSessionLocal() as session:
+    async with db_manager.session_factory() as session:
         # Check if data already exists
         from sqlalchemy import text, select, func
         count = await session.execute(select(func.count()).select_from(Site))
