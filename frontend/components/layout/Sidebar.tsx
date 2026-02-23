@@ -16,8 +16,10 @@ import {
     Cpu,
     Sparkles,
     PanelLeftClose,
-    PanelLeftOpen
+    PanelLeftOpen,
+    Palette
 } from 'lucide-react'
+import { useSkin } from '@/lib/skin/SkinContext'
 import clsx from 'clsx'
 
 interface NavItem {
@@ -45,6 +47,7 @@ const navigation: NavItem[] = [
 
 export default function Sidebar() {
     const pathname = usePathname()
+    const { openManager } = useSkin()
     const [expandedMenus, setExpandedMenus] = useState<string[]>(['Fleet'])
     const [collapsed, setCollapsed] = useState(false)
     const [hovered, setHovered] = useState(false)
@@ -207,6 +210,26 @@ export default function Sidebar() {
                     )
                 })}
             </nav>
+
+            {/* Skin Manager Button */}
+            <div className="p-2 border-t border-dark-100">
+                <button
+                    onClick={openManager}
+                    className={clsx(
+                        'w-full flex items-center px-3 py-2.5 rounded-lg transition-all duration-200',
+                        'text-gray-400 hover:bg-dark-300 hover:text-white'
+                    )}
+                    title={!isExpanded ? 'Skin Manager' : undefined}
+                >
+                    <Palette className="w-5 h-5 flex-shrink-0" />
+                    <span className={clsx(
+                        'ml-3 whitespace-nowrap transition-all duration-300 text-sm',
+                        isExpanded ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'
+                    )}>
+                        Skin Manager
+                    </span>
+                </button>
+            </div>
 
             {/* System Status */}
             <div className="p-2 border-t border-dark-100">

@@ -1,0 +1,83 @@
+/* ============================================
+ * Starter Minimal Skin
+ * Template dasar untuk memulai kustomisasi
+ * ============================================ */
+
+/* ====== Warna Utama ======
+ * Edit nilai-nilai ini sesuai brand Anda */
+:root {
+    --background: #111827;
+    --foreground: #f9fafb;
+    --card: #1f2937;
+    --card-hover: #283548;
+    --border: #374151;
+    --muted: #6b7280;
+    --accent: #3b82f6;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --surface-1: #1a2332;
+    --surface-2: #1f2937;
+    --surface-3: #243044;
+    --text-primary: #f9fafb;
+    --text-secondary: #9ca3af;
+    --text-muted: #6b7280;
+
+    /* Efek khusus */
+    --skin-glow: 0 0 15px rgba(59, 130, 246, 0.12);
+    --skin-card-radius: 12px;
+}
+
+/* ====== Tailwind Override ======
+ * Uncomment baris di bawah untuk override penuh */
+
+/* Background */
+.bg-dark-500,
+.bg-dark-400 {
+    background-color: var(--background) !important;
+}
+
+.bg-dark-300 {
+    background-color: var(--card) !important;
+}
+
+.bg-dark-200 {
+    background-color: var(--card-hover) !important;
+}
+
+/* Border */
+.border-dark-100 {
+    border-color: var(--border) !important;
+}
+
+/* Text */
+.text-white {
+    color: var(--text-primary) !important;
+}
+
+.text-gray-400,
+.text-gray-300 {
+    color: var(--text-secondary) !important;
+}
+
+.text-gray-500,
+.text-gray-600 {
+    color: var(--text-muted) !important;
+}
+
+/* Accent/Primary */
+.bg-primary-600 {
+    background-color: var(--accent) !important;
+}
+
+.text-primary-400,
+.text-primary-500 {
+    color: var(--accent) !important;
+}
+
+.bg-primary-500\/20 {
+    background-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+/* ====== Kustomisasi Tambahan ======
+ * Tambahkan CSS custom Anda di bawah ini */

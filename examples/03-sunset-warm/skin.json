@@ -1,0 +1,17 @@
+{
+    "name": "Sunset Warm",
+    "version": "1.0.0",
+    "author": "IoTHub Dev",
+    "description": "Tema hangat dengan nuansa sunset — oranye, merah, dan emas",
+    "files": {
+        "css": "theme.css"
+    },
+    "config": {
+        "previewColors": [
+            "#1a0e0a",
+            "#2d1810",
+            "#f97316",
+            "#eab308"
+        ]
+    }
+}

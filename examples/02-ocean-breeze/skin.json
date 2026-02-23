@@ -1,0 +1,17 @@
+{
+    "name": "Ocean Breeze",
+    "version": "1.0.0",
+    "author": "IoTHub Dev",
+    "description": "Tema biru laut yang sejuk dan modern, terinspirasi dari kedalaman samudra",
+    "files": {
+        "css": "theme.css"
+    },
+    "config": {
+        "previewColors": [
+            "#0b1628",
+            "#0f2035",
+            "#06b6d4",
+            "#0ea5e9"
+        ]
+    }
+}

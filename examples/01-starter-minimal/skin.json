@@ -1,0 +1,17 @@
+{
+    "name": "Starter Minimal",
+    "version": "1.0.0",
+    "author": "IoTHub Dev",
+    "description": "Skin minimal untuk memulai kustomisasi. Edit theme.css sesuai keinginan!",
+    "files": {
+        "css": "theme.css"
+    },
+    "config": {
+        "previewColors": [
+            "#111827",
+            "#1f2937",
+            "#3b82f6",
+            "#10b981"
+        ]
+    }
+}

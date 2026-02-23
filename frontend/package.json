@@ -9,8 +9,11 @@
         "lint": "next lint"
     },
     "dependencies": {
+        "@types/dompurify": "^3.0.5",
         "clsx": "^2.1.0",
         "date-fns": "^3.3.1",
+        "dompurify": "^3.3.1",
+        "jszip": "^3.10.1",
         "leaflet": "^1.9.4",
         "lucide-react": "^0.312.0",
         "mqtt": "^5.14.1",

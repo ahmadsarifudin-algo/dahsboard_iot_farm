@@ -1,0 +1,167 @@
+/* ============================================
+ * Ocean Breeze Skin
+ * Tema laut yang sejuk dengan gradien biru-cyan
+ * ============================================ */
+
+:root {
+    --background: #0b1628;
+    --foreground: #e0f4ff;
+    --card: #0f2035;
+    --card-hover: #143050;
+    --border: #1a3a5c;
+    --muted: #5b8ab5;
+    --accent: #06b6d4;
+    --success: #2dd4bf;
+    --warning: #fbbf24;
+    --danger: #fb7185;
+    --surface-1: #0d1c30;
+    --surface-2: #0f2035;
+    --surface-3: #122a45;
+    --text-primary: #e0f4ff;
+    --text-secondary: #7ec8e3;
+    --text-muted: #5b8ab5;
+
+    --skin-glow: 0 0 25px rgba(6, 182, 212, 0.15);
+    --skin-card-radius: 14px;
+    --skin-font-primary: 'Inter', system-ui, sans-serif;
+}
+
+/* --- Background Override --- */
+.bg-dark-500,
+.bg-dark-400 {
+    background-color: var(--background) !important;
+}
+
+.bg-dark-300 {
+    background-color: var(--card) !important;
+}
+
+.bg-dark-200 {
+    background-color: var(--card-hover) !important;
+}
+
+.border-dark-100 {
+    border-color: var(--border) !important;
+}
+
+/* --- Text Override --- */
+.text-white {
+    color: var(--text-primary) !important;
+}
+
+.text-gray-400,
+.text-gray-300 {
+    color: var(--text-secondary) !important;
+}
+
+.text-gray-500,
+.text-gray-600 {
+    color: var(--text-muted) !important;
+}
+
+/* --- Accent Override --- */
+.bg-primary-600 {
+    background-color: #06b6d4 !important;
+}
+
+.hover\:bg-primary-700:hover {
+    background-color: #0891b2 !important;
+}
+
+.text-primary-400,
+.text-primary-500 {
+    color: #06b6d4 !important;
+}
+
+.bg-primary-500\/20 {
+    background-color: rgba(6, 182, 212, 0.2) !important;
+}
+
+.border-primary-600\/30 {
+    border-color: rgba(6, 182, 212, 0.3) !important;
+}
+
+.focus\:border-primary-500:focus {
+    border-color: #06b6d4 !important;
+}
+
+/* --- Input Override --- */
+input,
+select,
+.input {
+    background-color: var(--surface-1) !important;
+    border-color: var(--border) !important;
+    color: var(--text-primary) !important;
+}
+
+.input::placeholder {
+    color: var(--text-muted) !important;
+}
+
+/* --- Card Glow Effect --- */
+.card {
+    background-color: var(--card) !important;
+    border-color: var(--border) !important;
+    box-shadow: var(--skin-glow);
+    border-radius: var(--skin-card-radius);
+}
+
+.card-hover:hover {
+    box-shadow: 0 0 30px rgba(6, 182, 212, 0.2);
+    border-color: rgba(6, 182, 212, 0.3) !important;
+}
+
+/* --- Status Colors --- */
+.status-online {
+    background-color: var(--success) !important;
+}
+
+.badge-success {
+    background-color: rgba(45, 212, 191, 0.2) !important;
+    color: #2dd4bf !important;
+}
+
+.badge-warning {
+    background-color: rgba(251, 191, 36, 0.2) !important;
+    color: #fbbf24 !important;
+}
+
+.badge-danger {
+    background-color: rgba(251, 113, 133, 0.2) !important;
+    color: #fb7185 !important;
+}
+
+.badge-info {
+    background-color: rgba(6, 182, 212, 0.2) !important;
+    color: #06b6d4 !important;
+}
+
+/* --- Wave Background Effect --- */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    background:
+        radial-gradient(ellipse at 20% 80%, rgba(6, 182, 212, 0.06) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(14, 165, 233, 0.05) 0%, transparent 60%);
+}
+
+/* --- Sidebar Gradient --- */
+aside {
+    background: linear-gradient(180deg, #0f2035 0%, #0b1628 100%) !important;
+}
+
+/* --- Scrollbar --- */
+::-webkit-scrollbar-thumb {
+    background: #1a3a5c !important;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #06b6d4 !important;
+}
