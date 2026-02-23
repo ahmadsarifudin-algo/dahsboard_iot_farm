@@ -18,8 +18,8 @@
 | **WSS URL** | `wss://broker.chickinindonesia.com:8084/mqtt` |
 | **WS URL** | `ws://broker.chickinindonesia.com:8083/mqtt` |
 | **Protocol** | MQTT v5 |
-| **Username** | `dashboard` |
-| **Password** | `dashboard@123` |
+| **Username** | `********` |
+| **Password** | `********` |
 | **Keepalive** | `60` seconds |
 | **Clean Start** | `true` |
 
