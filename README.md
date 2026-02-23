@@ -20,6 +20,7 @@
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
 - [Manual Setup](#manual-setup)
+- [Skin System](#-skin-system)
 - [Project Structure](#project-structure)
 - [Environment Variables](#environment-variables)
 - [API Documentation](#api-documentation)
@@ -71,6 +72,9 @@ The platform supports multi-floor, multi-device configurations with different pr
 - **Dark/Light Mode** — Full theme support with system preference detection
 - **Responsive Layout** — Auto-hide sidebar, collapsible navigation
 - **Smooth Animations** — Fade-in, slide-up transitions throughout
+- **Template Pack Skin System** — Upload custom `.zip` skins to change dashboard appearance
+- **3 Built-in Skins** — Dark Neon, Light Clean, Cyberpunk
+- **Skin Manager** — Modal UI with drag & drop upload, gallery, and instant preview
 
 ---
 
@@ -111,6 +115,8 @@ The platform supports multi-floor, multi-device configurations with different pr
 | Lucide React | 0.312 | Icon library |
 | Zustand | 4.5 | State management |
 | MQTT.js | 5.14 | MQTT over WebSocket |
+| JSZip | 3.10 | Skin .zip extraction |
+| DOMPurify | 3.2 | HTML sanitization for skins |
 | clsx | 2.1 | Conditional classnames |
 
 ### Backend
@@ -251,6 +257,43 @@ Frontend will be available at http://localhost:3000
 
 ---
 
+## 🎨 Skin System
+
+The dashboard includes a **Template Pack Skin System** that allows users to customize the UI appearance by uploading `.zip` files containing CSS overrides and HTML templates.
+
+### Built-in Skins
+
+| Skin | Description |
+|---|---|
+| **Dark Neon** | Default dark theme with neon blue accents |
+| **Light Clean** | Clean light theme for daytime use |
+| **Cyberpunk** | Neon pink & cyan cyberpunk theme |
+
+### Using Skin Manager
+
+1. Click the **🎨 Skin Manager** button at the bottom of the sidebar
+2. Browse built-in skins or drag & drop a custom `.zip` skin file
+3. Click **Apply** to instantly change the dashboard appearance
+4. Skins persist across page refreshes (stored in IndexedDB)
+
+### Creating Custom Skins
+
+A skin `.zip` requires at minimum:
+
+```
+my-skin.zip
+├── skin.json    ← Manifest (name, author, CSS path)
+└── theme.css    ← CSS variable overrides
+```
+
+Example skin templates are available in the [`examples/`](./examples/) directory.
+
+**Documentation:**
+- [📖 Skin Developer Guide](./docs/SKIN_GUIDE.md) — Full guide for creating skins
+- [📋 CSS Variables Reference](./docs/CSS_VARIABLES.md) — All available CSS variables
+
+---
+
 ## Project Structure
 
 ```
@@ -273,11 +316,20 @@ dashboard-iot/
 │   │   └── devices/             #   Device management
 │   ├── components/              # Reusable components
 │   │   ├── layout/              #   Sidebar, Header, LayoutWrapper
+│   │   │   ├── SkinManager.tsx  #   🎨 Skin gallery + upload modal
+│   │   │   └── SkinSlot.tsx     #   Template slot renderer
 │   │   └── fleet/               #   Fleet-specific components
 │   ├── lib/                     # Utilities & services
 │   │   ├── iot-api.ts           #   API client (Axios-like)
 │   │   ├── auth.ts              #   Auth service
 │   │   ├── theme.tsx            #   Theme provider (dark/light)
+│   │   ├── skin/                #   🎨 Skin engine
+│   │   │   ├── types.ts         #     TypeScript interfaces
+│   │   │   ├── SkinEngine.ts    #     Core engine + built-in skins
+│   │   │   ├── SkinValidator.ts #     Validation & sanitization
+│   │   │   ├── SkinStorage.ts   #     IndexedDB persistence
+│   │   │   ├── TemplateRenderer.ts # Mustache-like template engine
+│   │   │   └── SkinContext.tsx  #     React context + useSkin hook
 │   │   └── AuthContext.tsx      #   Auth React context
 │   ├── package.json
 │   ├── tailwind.config.js
@@ -303,7 +355,14 @@ dashboard-iot/
 │   ├── AUTH_API.md              #   Auth API docs
 │   ├── MQTT_TOPICS_COMPLETE.md  #   MQTT topic reference
 │   ├── ARCHITECTURE.md          #   System architecture
+│   ├── SKIN_GUIDE.md            #   🎨 Skin developer guide
+│   ├── CSS_VARIABLES.md         #   CSS variables reference
 │   └── FARM_DATA_ANALYSIS_PLAYGROUND.md
+│
+├── examples/                    # 🎨 Example skin templates
+│   ├── 01-starter-minimal/      #   Minimal starter template
+│   ├── 02-ocean-breeze/         #   Blue ocean theme
+│   └── 03-sunset-warm/          #   Warm sunset theme
 │
 ├── docker-compose.yml           # Full stack orchestration
 ├── .env.example                 # Environment template
