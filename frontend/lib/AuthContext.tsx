@@ -45,9 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             const response = await authService.login(identifier, password, method)
 
-            if (response.data?.token) {
-                authService.saveToken(response.data.token)
-                const userData = authService.decodeToken(response.data.token)
+            const token = response.token
+            if (token) {
+                authService.saveToken(token)
+                const userData = authService.decodeToken(token)
                 if (userData) {
                     authService.saveUser(userData)
                     setUser(userData)

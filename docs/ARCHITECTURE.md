@@ -1,52 +1,87 @@
-# Dashboard IoT - Project Overview
+# Dashboard IoT Architecture
 
-## Architecture
+Dokumen ini menggambarkan arsitektur yang sedang terpasang di repo, bukan target architecture lama.
+
+## Current Architecture
+
+### Actual Diagram
+
+![Current Architecture Diagram](./assets/architecture-current.svg)
+
+Diagram di atas adalah gambar arsitektur aktual implementasi saat ini, bukan target plan.
 
 ```mermaid
 graph TB
-    subgraph "Frontend Layer"
-        UI[Dashboard UI<br/>React/Vue/Angular]
-        WS_CLIENT[WebSocket Client]
-        CHARTS[Data Visualization<br/>Charts & Widgets]
+    subgraph Browser
+        UI[Next.js Frontend]
     end
-    
-    subgraph "Backend Layer"
-        API[REST API<br/>Express/FastAPI]
-        WS_SERVER[WebSocket Server]
-        MQTT_CLIENT[MQTT Client]
-        AUTH[Authentication<br/>JWT/OAuth]
+
+    subgraph Local Stack
+        API[FastAPI Backend]
+        DB[(SQLite or PostgreSQL)]
+        REDIS[(Redis)]
     end
-    
-    subgraph "Data Layer"
-        POSTGRES[(PostgreSQL<br/>User & Device Data)]
-        INFLUX[(InfluxDB<br/>Time-Series Data)]
-        REDIS[(Redis<br/>Cache & Pub/Sub)]
+
+    subgraph External Services Still Used by Frontend
+        AUTH[auth.chickinindonesia.com]
+        IOT[prod-iot.chickinindonesia.com]
+        BROKER[broker.chickinindonesia.com]
     end
-    
-    subgraph "IoT Layer"
-        MQTT_BROKER[MQTT Broker<br/>Mosquitto]
-        DEVICES[IoT Devices]
-    end
-    
+
     UI --> API
-    UI --> WS_CLIENT
-    WS_CLIENT --> WS_SERVER
-    CHARTS --> UI
-    
-    API --> AUTH
-    API --> POSTGRES
-    API --> INFLUX
+    API --> DB
     API --> REDIS
-    
-    WS_SERVER --> REDIS
-    MQTT_CLIENT --> MQTT_BROKER
-    MQTT_CLIENT --> INFLUX
-    MQTT_CLIENT --> REDIS
-    
-    DEVICES --> MQTT_BROKER
-    
-    style UI fill:#4A90E2
-    style API fill:#50C878
-    style POSTGRES fill:#336791
-    style INFLUX fill:#9394FF
-    style MQTT_BROKER fill:#660066
+
+    UI --> AUTH
+    UI --> IOT
+    UI --> BROKER
+```
+
+## Split Responsibility
+
+### Local backend
+
+FastAPI di `backend/` saat ini menangani:
+
+- dashboard stats
+- site/device CRUD untuk model lokal
+- telemetry query dan ingest
+- alarms
+- settings
+- AI analysis
+- market price search history
+- WebSocket realtime
+
+### External services
+
+Frontend masih langsung memanggil service eksternal untuk:
+
+- login dan logout
+- list kandang/flock dari sistem Chickin
+- operasi create/delete kandang pada API eksternal
+- browser MQTT connection
+
+## Important Consequence
+
+Repo ini belum sepenuhnya "self-contained". Menjalankan `docker compose up -d` hanya menghidupkan DB, Redis, backend, dan frontend lokal. Beberapa flow tetap bergantung pada endpoint eksternal yang di-hardcode di:
+
+- `frontend/lib/auth.ts`
+- `frontend/lib/iot-api.ts`
+- `frontend/lib/mqtt.ts`
+
+## Local Runtime Flow
+
+1. Frontend memanggil `NEXT_PUBLIC_API_URL` untuk dashboard overview, settings, analysis, dan data lokal.
+2. Backend membaca data dari SQLite atau PostgreSQL/TimescaleDB.
+3. Backend memakai Redis untuk status realtime dan pub/sub.
+4. Backend expose WebSocket di `/ws`.
+5. Backend hanya dapat publish/subscribe MQTT jika diarahkan ke broker eksternal via env.
+
+## Gaps vs Older Docs
+
+Dokumen lama masih menyebut beberapa hal yang tidak sesuai implementasi sekarang:
+
+- Express/Vue/Angular as options instead of current Next.js frontend
+- InfluxDB as time-series store, padahal backend aktif memakai SQLAlchemy + SQLite/PostgreSQL
+- local auth router yang belum ada
+- arsitektur backend tunggal penuh, padahal saat ini ada split local plus external

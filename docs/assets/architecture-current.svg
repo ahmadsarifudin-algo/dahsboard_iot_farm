@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="860" viewBox="0 0 1400 860">
+  <defs>
+    <style>
+      .title { font: 700 28px Arial, sans-serif; fill: #172033; }
+      .subtitle { font: 400 15px Arial, sans-serif; fill: #455066; }
+      .box-title { font: 700 18px Arial, sans-serif; fill: #172033; }
+      .text { font: 400 14px Arial, sans-serif; fill: #263246; }
+      .small { font: 400 13px Arial, sans-serif; fill: #5a657a; }
+      .label { font: 700 13px Arial, sans-serif; fill: #4a5568; }
+      .note { font: 700 13px Arial, sans-serif; fill: #7a2e0b; }
+      .shadow { filter: drop-shadow(0 6px 14px rgba(22,34,51,0.10)); }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#51607a"/>
+    </marker>
+    <marker id="arrowWarn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#b45309"/>
+    </marker>
+  </defs>
+
+  <rect width="1400" height="860" fill="#f5f7fb"/>
+
+  <text x="60" y="58" class="title">Current Architecture</text>
+  <text x="60" y="84" class="subtitle">Actual implementation state of the dashboard_iot_farm repository</text>
+
+  <rect x="70" y="130" rx="22" ry="22" width="260" height="190" fill="#fff7ed" stroke="#f59e0b" stroke-width="2" class="shadow"/>
+  <text x="100" y="170" class="box-title">Browser</text>
+  <text x="100" y="200" class="text">Next.js Frontend</text>
+  <text x="100" y="228" class="small">- Dashboard UI</text>
+  <text x="100" y="250" class="small">- Fleet / kandang pages</text>
+  <text x="100" y="272" class="small">- Data Playground widget</text>
+  <text x="100" y="294" class="small">- Analysis workspace</text>
+
+  <rect x="430" y="100" rx="24" ry="24" width="470" height="310" fill="#eff6ff" stroke="#3b82f6" stroke-width="2" class="shadow"/>
+  <text x="460" y="140" class="box-title">FastAPI Local Backend</text>
+  <text x="460" y="168" class="small">Acts as local API, domain backend, and partial adapter gateway</text>
+
+  <rect x="460" y="190" rx="14" ry="14" width="185" height="85" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="480" y="220" class="label">Local APIs</text>
+  <text x="480" y="245" class="small">stats, sites, devices</text>
+  <text x="480" y="265" class="small">telemetry, alarms, settings</text>
+
+  <rect x="675" y="190" rx="14" ry="14" width="190" height="85" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="695" y="220" class="label">Analytics APIs</text>
+  <text x="695" y="245" class="small">analysis</text>
+  <text x="695" y="265" class="small">market-prices</text>
+
+  <rect x="460" y="300" rx="14" ry="14" width="185" height="85" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="480" y="330" class="label">Domain APIs</text>
+  <text x="480" y="355" class="small">coops</text>
+  <text x="480" y="375" class="small">flocks</text>
+
+  <rect x="675" y="300" rx="14" ry="14" width="190" height="85" fill="#ffffff" stroke="#93c5fd"/>
+  <text x="695" y="330" class="label">Adapter APIs</text>
+  <text x="695" y="355" class="small">integrations/chickin/auth</text>
+  <text x="695" y="375" class="small">integrations/chickin/coops/flocks</text>
+
+  <rect x="450" y="500" rx="24" ry="24" width="430" height="250" fill="#f0fdf4" stroke="#22c55e" stroke-width="2" class="shadow"/>
+  <text x="480" y="540" class="box-title">App Database and Persistence</text>
+  <text x="480" y="568" class="small">Mixed persistence model in current implementation</text>
+
+  <rect x="480" y="595" rx="14" ry="14" width="170" height="120" fill="#ffffff" stroke="#86efac"/>
+  <text x="500" y="625" class="label">DB-backed</text>
+  <text x="500" y="650" class="small">sites, devices, telemetry</text>
+  <text x="500" y="672" class="small">alarms, commands</text>
+  <text x="500" y="694" class="small">coops, flocks</text>
+
+  <rect x="680" y="595" rx="14" ry="14" width="170" height="120" fill="#ffffff" stroke="#86efac"/>
+  <text x="700" y="625" class="label">New domain DB</text>
+  <text x="700" y="650" class="small">daily_metrics</text>
+  <text x="700" y="672" class="small">maintenance_logs</text>
+  <text x="700" y="694" class="small">market_searches, analysis_sessions</text>
+
+  <rect x="980" y="110" rx="24" ry="24" width="310" height="300" fill="#faf5ff" stroke="#8b5cf6" stroke-width="2" class="shadow"/>
+  <text x="1010" y="150" class="box-title">External Services</text>
+  <text x="1010" y="178" class="small">Source of truth and external runtime dependencies</text>
+
+  <rect x="1010" y="205" rx="14" ry="14" width="250" height="55" fill="#ffffff" stroke="#c4b5fd"/>
+  <text x="1030" y="238" class="label">auth.chickinindonesia.com</text>
+
+  <rect x="1010" y="280" rx="14" ry="14" width="250" height="55" fill="#ffffff" stroke="#c4b5fd"/>
+  <text x="1030" y="313" class="label">prod-iot.chickinindonesia.com</text>
+
+  <rect x="1010" y="355" rx="14" ry="14" width="250" height="55" fill="#ffffff" stroke="#c4b5fd"/>
+  <text x="1030" y="388" class="label">broker.chickinindonesia.com</text>
+
+  <line x1="330" y1="210" x2="430" y2="210" stroke="#51607a" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="350" y="195" class="label">primary local API calls</text>
+
+  <line x1="900" y1="225" x2="1010" y2="225" stroke="#51607a" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="920" y="210" class="label">auth adapter</text>
+
+  <line x1="900" y1="307" x2="1010" y2="307" stroke="#51607a" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="912" y="292" class="label">IoT adapter and upstream fetch</text>
+
+  <line x1="665" y1="410" x2="665" y2="500" stroke="#51607a" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="680" y="462" class="label">DB read/write and snapshots</text>
+
+  <line x1="330" y1="280" x2="1010" y2="382" stroke="#b45309" stroke-width="3" stroke-dasharray="12 8" marker-end="url(#arrowWarn)"/>
+  <text x="690" y="350" class="note">frontend still connects directly for browser MQTT</text>
+
+  <line x1="330" y1="245" x2="1010" y2="307" stroke="#b45309" stroke-width="3" stroke-dasharray="12 8" marker-end="url(#arrowWarn)"/>
+  <text x="585" y="262" class="note">some remaining frontend IoT calls still direct</text>
+
+  <rect x="980" y="500" rx="24" ry="24" width="310" height="180" fill="#fff1f2" stroke="#ef4444" stroke-width="2" class="shadow"/>
+  <text x="1010" y="540" class="box-title">Open Gaps</text>
+  <text x="1010" y="572" class="small">- frontend not fully behind local backend</text>
+  <text x="1010" y="596" class="small">- provisioning SQL still lags ORM models</text>
+  <text x="1010" y="620" class="small">- settings still file-based JSON</text>
+  <text x="1010" y="644" class="small">- realtime ownership still split</text>
+
+  <rect x="70" y="500" rx="24" ry="24" width="260" height="180" fill="#ecfeff" stroke="#06b6d4" stroke-width="2" class="shadow"/>
+  <text x="100" y="540" class="box-title">Interpretation</text>
+  <text x="100" y="572" class="small">Current system is:</text>
+  <text x="100" y="598" class="text">Backend-led hybrid architecture</text>
+  <text x="100" y="624" class="small">Not full local platform yet</text>
+  <text x="100" y="648" class="small">Not frontend-direct anymore either</text>
+</svg>

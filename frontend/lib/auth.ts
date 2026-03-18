@@ -1,16 +1,16 @@
-// Auth Service - Handles authentication with Chickin Auth API
-const AUTH_BASE_URL = 'https://auth.chickinindonesia.com';
+// Auth Service - Routes authentication through local backend adapter
+// instead of calling Chickin Auth API directly.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export interface LoginResponse {
-    data?: {
-        token: string;
-    };
+    token?: string;
     message: string;
+    user?: any;
     errors?: Array<{
         code?: number;
         message: string;
         type: string;
-    }>;
+    }> | null;
 }
 
 export interface User {
@@ -47,36 +47,46 @@ export interface User {
 export type LoginMethod = 'Email' | 'Username' | 'Phone';
 
 class AuthService {
-    private baseUrl: string;
+    private apiBase: string;
 
     constructor() {
-        this.baseUrl = AUTH_BASE_URL;
+        this.apiBase = API_BASE;
     }
 
-    // Login with Basic Auth + Method
+    // Login via local backend adapter (no more direct call to auth.chickinindonesia.com)
     async login(identifier: string, password: string, method: LoginMethod = 'Email'): Promise<LoginResponse> {
-        // Create Basic Auth header
-        const basicAuth = btoa(`${identifier}:${password}`);
-
-        const response = await fetch(`${this.baseUrl}/auth/v1/login`, {
+        const response = await fetch(`${this.apiBase}/integrations/chickin/auth/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Basic ${basicAuth}`
             },
-            body: JSON.stringify({ method })
+            body: JSON.stringify({ identifier, password, method })
         });
 
         const data = await response.json();
-        return data;
+
+        if (!response.ok) {
+            return {
+                message: data.detail || 'Login failed',
+                errors: [{ message: data.detail || 'Login failed', type: 'error' }],
+            };
+        }
+
+        // Normalize response to match existing LoginResponse contract
+        return {
+            token: data.token,
+            message: data.message || 'OK',
+            user: data.user,
+            errors: data.errors,
+        };
     }
 
-    // Logout
+    // Logout via local backend adapter
     async logout(): Promise<void> {
         const token = this.getToken();
         if (token) {
             try {
-                await fetch(`${this.baseUrl}/auth/v1/logout`, {
+                await fetch(`${this.apiBase}/integrations/chickin/auth/logout`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -89,14 +99,14 @@ class AuthService {
         this.clearToken();
     }
 
-    // Get current user from token
+    // Get current user via local backend adapter
     async getCurrentUser(): Promise<User | null> {
         const token = this.getToken();
         if (!token) return null;
 
         try {
-            const response = await fetch(`${this.baseUrl}/api/users/me`, {
-                method: 'PUT',
+            const response = await fetch(`${this.apiBase}/integrations/chickin/auth/me`, {
+                method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'

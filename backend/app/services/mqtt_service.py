@@ -1,5 +1,5 @@
 """
-MQTT Service for device communication via EMQX broker.
+MQTT Service for device communication via external broker.
 Gracefully degrades when MQTT is not available.
 """
 import json

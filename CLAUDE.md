@@ -6,10 +6,10 @@
 ## Project Overview
 
 Full-stack IoT monitoring dashboard for poultry farms with AI-powered data analysis.
-- Frontend: Next.js 14 + TypeScript + Tailwind CSS (port 3000)
+- Frontend: Next.js 13.5.6 + TypeScript + Tailwind CSS (port 3000)
 - Backend: FastAPI + SQLAlchemy async (port 8000)
 - AI Engine: Google Gemini 2.0 Flash (multi-role, search grounding)
-- MQTT: EMQX broker (port 1883, WebSocket 8083)
+- MQTT: external broker `broker.chickinindonesia.com`
 - Database: TimescaleDB/PostgreSQL (port 5432) / SQLite (dev fallback)
 
 ## Key Rules

@@ -6,6 +6,7 @@ python-multipart>=0.0.20
 # Database
 sqlalchemy[asyncio]>=2.0.36
 asyncpg>=0.30.0
+aiosqlite>=0.20.0
 alembic>=1.14.0
 
 # Redis
@@ -23,6 +24,9 @@ python-dotenv>=1.0.1
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 httpx>=0.28.0
+
+# Google Gemini AI (market price search + analysis service)
+google-genai>=1.0.0
 
 # Development
 pytest>=8.3.0

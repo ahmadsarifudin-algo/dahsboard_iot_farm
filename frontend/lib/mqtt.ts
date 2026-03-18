@@ -9,17 +9,19 @@ const MQTT_CONFIG = {
     wsPort: 8083,
     wssPort: 8084,
     path: '/mqtt',
-    username: 'iotChickinServerNode',
-    password: '60zJ23n*eVCQ',
+    username: process.env.NEXT_PUBLIC_MQTT_USERNAME || 'iotChickinServerNode',
+    password: process.env.NEXT_PUBLIC_MQTT_PASSWORD || '60zJ23n*eVCQ',
     protocolVersion: 5, // MQTT v5
     keepalive: 60,
     cleanStart: true,
     sessionExpiry: 0
 }
 
-// Build WebSocket URL (non-SSL for compatibility)
+const DEFAULT_MQTT_URL = `ws://${MQTT_CONFIG.broker}:${MQTT_CONFIG.wsPort}${MQTT_CONFIG.path}`
+
+// Build WebSocket URL from env when provided
 const MQTT_URL = typeof window !== 'undefined'
-    ? `ws://${MQTT_CONFIG.broker}:${MQTT_CONFIG.wsPort}/mqtt`
+    ? (process.env.NEXT_PUBLIC_MQTT_URL || DEFAULT_MQTT_URL)
     : ''
 
 // Topic suffix

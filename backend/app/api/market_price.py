@@ -1,21 +1,24 @@
-"""Market Price Search API with JSON file storage for historical web search data."""
+"""
+Market Price Search API with database persistence.
+Migrated from JSON file storage to MarketSearch table.
+"""
 import json
-import uuid
-import os
 import re
 import time
 from datetime import datetime
-from pathlib import Path
 from typing import Optional
-from fastapi import APIRouter, HTTPException
+from uuid import uuid4
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import select, func, distinct
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import get_db
+from app.models import MarketSearch
 
 
 router = APIRouter(prefix="/market-prices", tags=["market-prices"])
-
-# JSON storage path
-DATA_DIR = Path(__file__).parent.parent.parent / "data"
-SEARCHES_FILE = DATA_DIR / "market_searches.json"
 
 # In-memory cache: {query_hash: {data, timestamp}}
 _cache: dict = {}
@@ -24,34 +27,6 @@ CACHE_TTL = 1800  # 30 minutes
 
 class SearchRequest(BaseModel):
     query: str
-
-
-class DeleteRequest(BaseModel):
-    search_id: str
-
-
-# --- JSON File Storage ---
-
-def _ensure_data_dir():
-    """Ensure the data directory exists."""
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    if not SEARCHES_FILE.exists():
-        SEARCHES_FILE.write_text(json.dumps({"searches": []}, indent=2), encoding="utf-8")
-
-
-def _load_searches() -> dict:
-    """Load all searches from JSON file."""
-    _ensure_data_dir()
-    try:
-        return json.loads(SEARCHES_FILE.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, FileNotFoundError):
-        return {"searches": []}
-
-
-def _save_searches(data: dict):
-    """Save searches to JSON file."""
-    _ensure_data_dir()
-    SEARCHES_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 def _auto_category(query: str) -> str:
@@ -134,15 +109,11 @@ Pastikan:
                     })
 
     # Parse JSON from response
-    # Strip markdown code blocks if present
     clean = text
-
-    # Try to extract JSON from markdown code block first
     code_block_match = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', clean, flags=re.DOTALL)
     if code_block_match:
         clean = code_block_match.group(1).strip()
     else:
-        # Try to find raw JSON object in the text
         json_match = re.search(r'\{[\s\S]*\}', clean)
         if json_match:
             clean = json_match.group(0).strip()
@@ -150,7 +121,6 @@ Pastikan:
     try:
         parsed = json.loads(clean)
     except json.JSONDecodeError:
-        # If parsing fails, wrap the raw text as a single item
         parsed = {
             "summary": text[:200],
             "items": [{"label": "Hasil Pencarian", "value": text[:500], "detail": "", "trend": "stabil"}]
@@ -163,11 +133,24 @@ Pastikan:
     }
 
 
+def _model_to_record(m: MarketSearch) -> dict:
+    """Convert a MarketSearch ORM object to the API response dict."""
+    return {
+        "id": m.id,
+        "query": m.query,
+        "category": m.category,
+        "summary": m.summary,
+        "items": m.items if m.items else [],
+        "sources": m.sources if m.sources else [],
+        "searched_at": m.searched_at.isoformat() if m.searched_at else None,
+    }
+
+
 # --- API Endpoints ---
 
 @router.post("/search")
-async def search_market_prices(req: SearchRequest):
-    """Search for market prices using Gemini + Google Search, save to JSON history."""
+async def search_market_prices(req: SearchRequest, db: AsyncSession = Depends(get_db)):
+    """Search for market prices using Gemini + Google Search, persist to database."""
     query = req.query.strip()
     if not query:
         raise HTTPException(status_code=400, detail="Query cannot be empty")
@@ -180,66 +163,74 @@ async def search_market_prices(req: SearchRequest):
             return cached["data"]
 
     try:
-        # Call Gemini with search grounding
         result = await _search_with_gemini(query)
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
-    # Build search record
-    search_record = {
-        "id": str(uuid.uuid4())[:8],
-        "query": query,
-        "category": _auto_category(query),
-        "summary": result["summary"],
-        "items": result["items"],
-        "sources": result["sources"],
-        "searched_at": datetime.now().isoformat(),
-    }
+    # Persist to database
+    record = MarketSearch(
+        id=str(uuid4()),
+        query=query,
+        category=_auto_category(query),
+        summary=result["summary"],
+        items=result["items"],
+        sources=result["sources"],
+        searched_at=datetime.utcnow(),
+    )
+    db.add(record)
+    await db.flush()
+    await db.refresh(record)
 
-    # Save to JSON file
-    data = _load_searches()
-    data["searches"].insert(0, search_record)  # newest first
-    # Keep max 200 entries
-    data["searches"] = data["searches"][:200]
-    _save_searches(data)
+    search_record = _model_to_record(record)
 
     # Cache the response
-    response = {
-        "search": search_record,
-        "cached": False,
-    }
+    response = {"search": search_record, "cached": False}
     _cache[cache_key] = {"data": {**response, "cached": True}, "timestamp": time.time()}
 
     return response
 
 
 @router.get("/history")
-async def get_search_history(category: Optional[str] = None, limit: int = 20):
-    """Get search history from JSON file, optionally filtered by category."""
-    data = _load_searches()
-    searches = data.get("searches", [])
-
+async def get_search_history(
+    category: Optional[str] = None,
+    limit: int = 20,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get search history from database, optionally filtered by category."""
+    query = select(MarketSearch).order_by(MarketSearch.searched_at.desc())
     if category:
-        searches = [s for s in searches if s.get("category") == category]
+        query = query.where(MarketSearch.category == category)
+    query = query.limit(limit)
+
+    result = await db.execute(query)
+    searches = [_model_to_record(s) for s in result.scalars().all()]
+
+    # Total count
+    count_q = select(func.count(MarketSearch.id))
+    if category:
+        count_q = count_q.where(MarketSearch.category == category)
+    total = (await db.execute(count_q)).scalar() or 0
+
+    # Distinct categories
+    cat_q = select(distinct(MarketSearch.category))
+    cats = (await db.execute(cat_q)).scalars().all()
 
     return {
-        "searches": searches[:limit],
-        "total": len(searches),
-        "categories": list(set(s.get("category", "lainnya") for s in data.get("searches", []))),
+        "searches": searches,
+        "total": total,
+        "categories": list(cats),
     }
 
 
 @router.delete("/history/{search_id}")
-async def delete_search(search_id: str):
+async def delete_search(search_id: str, db: AsyncSession = Depends(get_db)):
     """Delete a specific search from history."""
-    data = _load_searches()
-    original_len = len(data["searches"])
-    data["searches"] = [s for s in data["searches"] if s.get("id") != search_id]
-
-    if len(data["searches"]) == original_len:
+    result = await db.execute(select(MarketSearch).where(MarketSearch.id == search_id))
+    record = result.scalar_one_or_none()
+    if not record:
         raise HTTPException(status_code=404, detail="Search not found")
 
-    _save_searches(data)
+    await db.delete(record)
     return {"message": "Deleted", "id": search_id}

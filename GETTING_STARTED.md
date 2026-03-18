@@ -1,5 +1,7 @@
 # Getting Started with IoT Dashboard
 
+> Note: this file is legacy. For the current setup, prefer `README.md` and `docs/ARCHITECTURE.md`.
+
 ## Prerequisites
 - Node.js 18+ or Python 3.9+
 - Docker and Docker Compose
@@ -9,7 +11,7 @@
 
 ### 1. Start Infrastructure Services
 ```bash
-# Start all services (PostgreSQL, InfluxDB, Redis, MQTT)
+# Start local services (PostgreSQL, Redis, backend dependencies)
 docker-compose up -d
 
 # Verify all services are running
@@ -69,7 +71,7 @@ npm run dev
 ### 6. Access the Dashboard
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:3000
-- InfluxDB UI: http://localhost:8086
+- External MQTT broker: broker.chickinindonesia.com
 
 ## Development Workflow
 
@@ -80,14 +82,11 @@ npm run dev
 
 ## Testing MQTT
 
-You can test MQTT connectivity using mosquitto clients:
+You can test MQTT connectivity against the external broker using the provided scripts:
 
 ```bash
-# Subscribe to a topic
-docker exec -it iot-mosquitto mosquitto_sub -t "devices/+/telemetry"
-
-# Publish a test message
-docker exec -it iot-mosquitto mosquitto_pub -t "devices/test-device/telemetry" -m '{"temperature": 25.5, "humidity": 60}'
+node test-mqtt.js
+node test-mqtt-mapper.js
 ```
 
 ## Stopping Services
@@ -107,7 +106,7 @@ docker-compose down -v
 3. Create device management APIs
 4. Build the dashboard UI
 5. Integrate real-time data visualization
-6. Set up MQTT device communication
+6. Configure access to the external MQTT broker if backend MQTT is needed
 
 ## Troubleshooting
 

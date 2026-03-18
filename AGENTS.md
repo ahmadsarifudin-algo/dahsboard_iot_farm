@@ -3,6 +3,13 @@
 > This file provides context for AI coding agents (Antigravity, Claude Code, Cursor, Copilot, etc.)
 > to understand and continue working on this project effectively.
 
+## Implementation Drift Note
+
+- The repo currently uses a split architecture: some frontend flows hit the local FastAPI backend, while auth, fleet/kandang, and browser MQTT still use external Chickin services.
+- The most accurate repo-level references are `README.md`, `docs/LOCAL_BACKEND_API.md`, and `docs/ARCHITECTURE.md`.
+- There is no local `/api/v1/auth` router at the moment.
+- `frontend/lib/iot-api.ts`, `frontend/lib/auth.ts`, and `frontend/lib/mqtt.ts` still contain hardcoded external hosts.
+
 ## Project Summary
 
 This is a **full-stack IoT monitoring dashboard** for poultry farms. It connects to hardware controllers
@@ -11,11 +18,11 @@ and an AI-powered data analysis playground with multi-expert AI roles.
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14 (App Router) + TypeScript + Tailwind CSS 3.4
+- **Frontend**: Next.js 13.5.6 (App Router) + TypeScript + Tailwind CSS 3.4
 - **Backend**: FastAPI (Python 3.11+) + SQLAlchemy 2.0 (async) + asyncpg
 - **Database**: TimescaleDB (PostgreSQL 15 with time-series extension) / SQLite (dev fallback)
 - **AI Engine**: Google Gemini 2.0 Flash (via `google-genai` SDK)
-- **MQTT Broker**: EMQX 5.4 (devices connect via MQTT, frontend via WebSocket on port 8083)
+- **MQTT Broker**: External broker `broker.chickinindonesia.com` for browser/device MQTT flows
 - **Cache**: Redis 7
 - **Orchestration**: Docker Compose
 
@@ -30,7 +37,7 @@ and an AI-powered data analysis playground with multi-expert AI roles.
 | `frontend/components/fleet/` | Reusable fleet/device components (modals, cards) |
 | `frontend/lib/` | API client (`iot-api.ts`), auth (`auth.ts`), theme (`theme.tsx`) |
 | `backend/` | FastAPI app. Run with `cd backend && pip install -r requirements.txt && python main.py` |
-| `backend/app/api/` | Route handlers (kandang, devices, stats, alarms, auth, **analysis**, settings, market_price) |
+| `backend/app/api/` | Route handlers for sites, devices, telemetry, alarms, stats, settings, analysis, and market prices |
 | `backend/app/models/` | SQLAlchemy models |
 | `backend/app/services/` | Business logic — **analysis_service.py**, **ai_roles.py**, MQTT, WebSocket |
 | `docs/` | API docs, MQTT topics, architecture, **FARM_DATA_ANALYSIS_PLAYGROUND.md** |
@@ -43,15 +50,15 @@ and an AI-powered data analysis playground with multi-expert AI roles.
 1. **Layout System**: `LayoutWrapper.tsx` uses a route whitelist (`dashboardRoutes`) to decide which pages
    get the Sidebar + Header. When adding new pages, **add the route to this whitelist**.
 
-2. **API Client**: All API calls go through `frontend/lib/iot-api.ts`. It handles auth headers,
-   base URL, and error formatting. Use `iotApi.xxx()` methods, don't use raw `fetch`.
-   - **Exception**: The Analysis page (`/analysis`) uses direct `fetch()` to `localhost:8000/api/v1/analysis/ask`.
+2. **API Clients**: The frontend currently uses two API layers.
+   - `frontend/lib/api.ts` talks to the local FastAPI backend.
+   - `frontend/lib/iot-api.ts` talks to the external Chickin IoT API.
+   - Analysis and settings pages also use direct `fetch()` to `NEXT_PUBLIC_API_URL`.
 
 3. **Auth Flow**: Login → JWT token stored in localStorage → attached to API calls via `auth.ts`.
    `AuthContext.tsx` provides React context. Pages check `authService.isAuthenticated()` on mount.
 
-4. **MQTT in Frontend**: Direct WebSocket connection to EMQX (port 8083) from browser.
-   Used for real-time telemetry display and device control commands.
+4. **MQTT in Frontend**: The browser MQTT client is configured against the external Chickin broker in `frontend/lib/mqtt.ts`.
 
 5. **Styling**: Tailwind CSS with custom dark theme tokens defined in `tailwind.config.js`:
    - `dark-100` through `dark-500` (darkest)
@@ -174,7 +181,7 @@ Settings PUT {database_url} → validate → test connection → create tables �
 | `frontend/.env.local` | Active frontend config (gitignored) |
 | `frontend/.env.example` | Template with `NEXT_PUBLIC_*` vars |
 
-Frontend uses `NEXT_PUBLIC_API_URL` env var for API base URL (no hardcoded localhost).
+Frontend uses `NEXT_PUBLIC_API_URL` for local backend calls, but some clients still use hardcoded external hosts.
 
 ## Database Models
 

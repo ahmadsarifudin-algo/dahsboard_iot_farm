@@ -21,14 +21,20 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
     redis_enabled: bool = False
     
-    # MQTT - EMQX (optional for local dev)
-    mqtt_broker: str = "localhost"
+    # MQTT - external broker (optional)
+    mqtt_broker: str = "broker.chickinindonesia.com"
     mqtt_port: int = 1883
     mqtt_username: str = ""
     mqtt_password: str = ""
     mqtt_client_id: str = "iot-backend"
     mqtt_enabled: bool = False
     
+    # Chickin Integration - external service base URLs
+    chickin_auth_base_url: str = "https://auth.chickinindonesia.com"
+    chickin_iot_base_url: str = "https://prod-iot.chickinindonesia.com"
+    chickin_mqtt_broker: str = "broker.chickinindonesia.com"
+    chickin_mqtt_ws_port: int = 8083
+
     # JWT
     jwt_secret_key: str = "your-secret-key-change-in-production"
     jwt_algorithm: str = "HS256"

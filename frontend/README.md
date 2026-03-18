@@ -1,44 +1,38 @@
-# Frontend Placeholder
+# Frontend
 
-This directory will contain the frontend application for the IoT Dashboard.
+Frontend menggunakan Next.js 13 App Router.
 
-## Recommended Setup
+## Important Integration Split
 
-### Option 1: React with Vite
+Tidak semua halaman memakai backend yang sama.
+
+- Memakai backend lokal (`NEXT_PUBLIC_API_URL`):
+  - dashboard overview
+  - map data lokal
+  - alarms
+  - settings
+  - analysis playground
+
+- Masih memakai service eksternal:
+  - login via `frontend/lib/auth.ts`
+  - kandang/flock via `frontend/lib/iot-api.ts`
+  - browser MQTT via external broker in `frontend/lib/mqtt.ts`
+
+## Run
+
 ```bash
-npm create vite@latest . -- --template react
 npm install
+npm run dev
 ```
 
-### Option 2: Next.js
-```bash
-npx create-next-app@latest .
-```
+## Main Files
 
-### Option 3: Vue.js
-```bash
-npm create vue@latest .
-```
-
-## Required Dependencies
-After initializing, install these additional packages:
-```bash
-# Data visualization
-npm install recharts chart.js react-chartjs-2 d3
-
-# Real-time communication
-npm install socket.io-client
-
-# State management
-npm install zustand
-# or
-npm install @reduxjs/toolkit react-redux
-
-# UI components
-npm install @mui/material @emotion/react @emotion/styled
-# or
-npm install antd
-
-# HTTP client
-npm install axios
-```
+- `app/page.tsx`: overview dashboard
+- `app/analysis/page.tsx`: AI analysis playground
+- `app/settings/page.tsx`: runtime settings UI
+- `app/fleet/kandang/page.tsx`: kandang list from external IoT API
+- `app/fleet/kandang/[id]/page.tsx`: kandang detail with external IoT API plus external MQTT broker
+- `lib/api.ts`: client untuk FastAPI lokal
+- `lib/iot-api.ts`: client untuk external IoT API
+- `lib/auth.ts`: client untuk external auth API
+- `lib/mqtt.ts`: browser MQTT client

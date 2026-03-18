@@ -32,12 +32,12 @@ export default function LoginPage() {
         try {
             const response = await authService.login(identifier, password, method)
 
-            if (response.data?.token) {
+            if (response.token) {
                 // Save token
-                authService.saveToken(response.data.token)
+                authService.saveToken(response.token)
 
                 // Decode and save user data
-                const userData = authService.decodeToken(response.data.token)
+                const userData = authService.decodeToken(response.token)
                 if (userData) {
                     authService.saveUser(userData)
                 }
