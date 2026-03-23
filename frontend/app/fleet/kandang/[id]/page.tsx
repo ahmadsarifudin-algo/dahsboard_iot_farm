@@ -619,6 +619,31 @@ export default function KandangDetailPage() {
                 if (found.flocks && found.flocks.length > 0) {
                     updateSensorsFromFlock(found.flocks[0])
                 }
+
+                // Fetch full flock details to enrich with sensor/device/partNumber data
+                if (found.flock && found.flock.length > 0) {
+                    try {
+                        const flockDetails = await Promise.all(
+                            found.flock.map(f =>
+                                iotApi.getFlockById(f._id).catch(err => {
+                                    console.warn(`Failed to fetch flock ${f._id}:`, err)
+                                    return null
+                                })
+                            )
+                        )
+                        const enrichedFlocks = flockDetails
+                            .filter(Boolean)
+                            .map(r => r!.data)
+                        if (enrichedFlocks.length > 0) {
+                            const updated = { ...found, flocks: enrichedFlocks }
+                            setKandang(updated)
+                            updateSensorsFromFlock(enrichedFlocks[0])
+                        }
+                    } catch (err) {
+                        console.warn('Failed to enrich flocks:', err)
+                        // Controls still work with basic flock stubs
+                    }
+                }
             } else {
                 setError('Kandang tidak ditemukan')
             }
