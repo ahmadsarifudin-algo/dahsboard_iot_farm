@@ -264,7 +264,7 @@ class IoTApiClient {
                 typeCode: 0,
                 version: '',
                 versionCode: 0,
-                partNumber: '',
+                partNumber: (f as any).part_number || '',
                 connected: f.connected,
                 isPairing: false,
                 enable: true,

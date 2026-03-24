@@ -219,6 +219,7 @@ class ChickinClient:
                     "name": f.get("name", ""),
                     "population": f.get("populasi", 0),
                     "connected": f.get("connected", False),
+                    "part_number": f.get("partNumber", ""),
                 }
                 for f in k.get("flocks", [])
             ],
