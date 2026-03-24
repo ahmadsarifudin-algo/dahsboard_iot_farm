@@ -644,9 +644,21 @@ export default function KandangDetailPage() {
                             .filter(Boolean)
                             .map(r => r!.data)
                         if (enrichedFlocks.length > 0) {
-                            const updated = { ...found, flocks: enrichedFlocks }
+                            // Merge enriched data with original flock data,
+                            // preserving fields (like partNumber) that the
+                            // flock detail API doesn't return
+                            const mergedFlocks = enrichedFlocks.map((enriched, idx) => {
+                                const original = found.flocks?.[idx]
+                                return {
+                                    ...(original || {}),  // Keep original fields as base
+                                    ...enriched,          // Overlay enriched data
+                                    // Preserve partNumber from original if enriched is empty
+                                    partNumber: enriched.partNumber || original?.partNumber || '',
+                                }
+                            })
+                            const updated = { ...found, flocks: mergedFlocks }
                             setKandang(updated)
-                            updateSensorsFromFlock(enrichedFlocks[0])
+                            updateSensorsFromFlock(mergedFlocks[0])
                         }
                     } catch (err) {
                         console.warn('Failed to enrich flocks:', err)
