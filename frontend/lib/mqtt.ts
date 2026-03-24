@@ -17,12 +17,26 @@ const MQTT_CONFIG = {
     sessionExpiry: 0
 }
 
-const DEFAULT_MQTT_URL = `ws://${MQTT_CONFIG.broker}:${MQTT_CONFIG.wsPort}${MQTT_CONFIG.path}`
+// Auto-detect ws:// vs wss:// based on page protocol
+function getMqttUrl(): string {
+    if (typeof window === 'undefined') return ''
+    // If env var is set, use it directly
+    const envUrl = process.env.NEXT_PUBLIC_MQTT_URL
+    if (envUrl) {
+        // If page is HTTPS but env URL uses ws://, auto-upgrade to wss://
+        if (window.location.protocol === 'https:' && envUrl.startsWith('ws://')) {
+            return envUrl.replace('ws://', 'wss://').replace(`:${MQTT_CONFIG.wsPort}`, `:${MQTT_CONFIG.wssPort}`)
+        }
+        return envUrl
+    }
+    // Default: pick protocol based on page
+    const isSecure = window.location.protocol === 'https:'
+    const proto = isSecure ? 'wss' : 'ws'
+    const port = isSecure ? MQTT_CONFIG.wssPort : MQTT_CONFIG.wsPort
+    return `${proto}://${MQTT_CONFIG.broker}:${port}${MQTT_CONFIG.path}`
+}
 
-// Build WebSocket URL from env when provided
-const MQTT_URL = typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_MQTT_URL || DEFAULT_MQTT_URL)
-    : ''
+const MQTT_URL = getMqttUrl()
 
 // Topic suffix
 const TOPIC_SUFFIX = '8883'
@@ -260,7 +274,14 @@ export function useMqtt(partNumber?: string, floorIndex: number = 0, totalFloors
         }
 
         console.log('MQTT: Connecting to', MQTT_URL)
-        const client = mqtt.connect(MQTT_URL, options)
+        let client: MqttClient
+        try {
+            client = mqtt.connect(MQTT_URL, options)
+        } catch (err: any) {
+            console.error('MQTT: Failed to connect (SecurityError or other):', err)
+            setError(`MQTT connection failed: ${err.message || err}`)
+            return
+        }
 
         client.on('connect', () => {
             console.log('MQTT: Connected to broker')
