@@ -1186,14 +1186,14 @@ export default function KandangDetailPage() {
                             <div className="mt-3 pt-3 border-t border-dark-100">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-500">Populasi Awal</span>
-                                    <span className="text-gray-400">{(kandang.flock?.[selectedFloorIndex]?.populasi || selectedFlock?.population || 0).toLocaleString()} ekor</span>
+                                    <span className="text-gray-400">{(kandang.flock?.[selectedFloorIndex]?.populasi || (selectedFlock as any)?.population || 0).toLocaleString()} ekor</span>
                                 </div>
                                 <div className="flex justify-between text-sm mt-1">
                                     <span className="text-gray-500">Tingkat Kelangsungan</span>
                                     <span className="text-green-400">
                                         {(() => {
                                             const flockD = kandang.flock?.[selectedFloorIndex]
-                                            const initPop = flockD?.populasi || selectedFlock?.population || 1
+                                            const initPop = flockD?.populasi || (selectedFlock as any)?.population || 1
                                             const mort = flockD?.mortality || 0
                                             const cur = initPop - mort
                                             return ((cur / initPop) * 100).toFixed(1)
