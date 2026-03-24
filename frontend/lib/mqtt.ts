@@ -679,7 +679,8 @@ export function useMqtt(partNumber?: string, floorIndex: number = 0, totalFloors
     const controlDevice = useCallback((device: string, state: 0 | 1, onSuccess?: () => void, onFailure?: () => void) => {
         if (!partNumber || !clientRef.current?.connected) {
             console.warn('MQTT: Not connected or no partNumber')
-            onFailure?.()
+            // Delay failure callback so React can render the loading spinner overlay
+            setTimeout(() => onFailure?.(), 1000)
             return
         }
 
