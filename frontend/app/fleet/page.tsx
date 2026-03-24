@@ -35,6 +35,13 @@ interface MaintenanceLog {
 }
 
 // ============= Helpers =============
+function safeFormatDate(dateStr: string, fmt: string, options?: any): string {
+    if (!dateStr) return '—'
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return '—'
+    try { return format(d, fmt, options) } catch { return '—' }
+}
+
 function getMasaAktif(tanggalPasang: string): string {
     if (!tanggalPasang) return '—'
     const now = new Date()
@@ -305,7 +312,7 @@ export default function FleetDeviceListPage() {
                                                 <div className="flex items-center justify-center space-x-1.5">
                                                     <Calendar className="w-3.5 h-3.5 text-gray-500" />
                                                     <span className="text-sm text-gray-300">
-                                                        {format(new Date(device.tanggalPasang), 'dd MMM yyyy', { locale: idLocale })}
+                                                        {safeFormatDate(device.tanggalPasang, 'dd MMM yyyy', { locale: idLocale })}
                                                     </span>
                                                 </div>
                                             </td>
@@ -383,7 +390,7 @@ export default function FleetDeviceListPage() {
                                         </div>
                                         <div className="p-2 rounded-lg bg-dark-400">
                                             <p className="text-[10px] text-gray-500">Tgl Pasang</p>
-                                            <p className="text-xs font-medium text-white">{format(new Date(device.tanggalPasang), 'dd/MM/yy')}</p>
+                                            <p className="text-xs font-medium text-white">{safeFormatDate(device.tanggalPasang, 'dd/MM/yy')}</p>
                                         </div>
                                         <div className="p-2 rounded-lg bg-dark-400">
                                             <p className="text-[10px] text-gray-500">Masa Aktif</p>
@@ -467,7 +474,7 @@ export default function FleetDeviceListPage() {
                                                             <tr key={log.id} className="hover:bg-dark-400/50 transition-colors">
                                                                 <td className="py-3 px-3">
                                                                     <span className="text-sm text-gray-300">
-                                                                        {format(new Date(log.date), 'dd MMM yyyy', { locale: idLocale })}
+                                                                        {safeFormatDate(log.date, 'dd MMM yyyy', { locale: idLocale })}
                                                                     </span>
                                                                 </td>
                                                                 <td className="py-3 px-3">
@@ -517,7 +524,7 @@ export default function FleetDeviceListPage() {
                                                     <div key={log.id} className="p-4 rounded-xl bg-dark-400 border border-dark-100 space-y-2">
                                                         <div className="flex items-center justify-between">
                                                             <span className="text-xs text-gray-500">
-                                                                {format(new Date(log.date), 'dd MMM yyyy', { locale: idLocale })}
+                                                                {safeFormatDate(log.date, 'dd MMM yyyy', { locale: idLocale })}
                                                             </span>
                                                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${statusBadge.className}`}>
                                                                 {statusBadge.label}
