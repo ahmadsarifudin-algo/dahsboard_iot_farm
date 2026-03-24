@@ -248,6 +248,9 @@ export function useMqtt(partNumber?: string, floorIndex: number = 0, totalFloors
     const [calibrationState, setCalibrationState] = useState<CalibrationState>({ tempOffset: 0 })
     const [syncState, setSyncState] = useState<SyncState | null>(null)
     const [error, setError] = useState<string | null>(null)
+    const [isSyncing, setIsSyncing] = useState(false)
+    const [syncFailed, setSyncFailed] = useState(false)
+    const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
     // Track pending feedback callbacks
     const feedbackCallbacksRef = useRef<Map<string, FeedbackCallback>>(new Map())
@@ -531,6 +534,13 @@ export function useMqtt(partNumber?: string, floorIndex: number = 0, totalFloors
             // Complete device state sync
             console.log('MQTT: Received SYNC', payload)
             setSyncState(payload as SyncState)
+            // Clear syncing state - we got a response
+            setIsSyncing(false)
+            setSyncFailed(false)
+            if (syncTimeoutRef.current) {
+                clearTimeout(syncTimeoutRef.current)
+                syncTimeoutRef.current = null
+            }
 
             // Parse SYNC payload to populate other states
             const sync = payload as SyncState
@@ -835,6 +845,23 @@ export function useMqtt(partNumber?: string, floorIndex: number = 0, totalFloors
             console.warn('MQTT: Not connected or no partNumber for SYNC')
             return
         }
+
+        // Set syncing state
+        setIsSyncing(true)
+        setSyncFailed(false)
+
+        // Clear any existing timeout
+        if (syncTimeoutRef.current) {
+            clearTimeout(syncTimeoutRef.current)
+        }
+
+        // Timeout after 15 seconds if no SYNC response
+        syncTimeoutRef.current = setTimeout(() => {
+            setIsSyncing(false)
+            setSyncFailed(true)
+            console.error('MQTT: SYNC timeout - device did not respond within 15s')
+        }, 15000)
+
         // Use buildReqTopic: cmd/{pn}/REQ (no /8883)
         const topic = buildReqTopic(targetPn)
         const payload = {
@@ -848,6 +875,12 @@ export function useMqtt(partNumber?: string, floorIndex: number = 0, totalFloors
         clientRef.current.publish(topic, JSON.stringify(payload), { qos: 0 }, (err) => {
             if (err) {
                 console.error('MQTT: Sync request error', err)
+                setIsSyncing(false)
+                setSyncFailed(true)
+                if (syncTimeoutRef.current) {
+                    clearTimeout(syncTimeoutRef.current)
+                    syncTimeoutRef.current = null
+                }
             } else {
                 console.log(`MQTT: Requested sync for ${lantai}`)
             }
@@ -883,6 +916,8 @@ export function useMqtt(partNumber?: string, floorIndex: number = 0, totalFloors
         inverterState,
         calibrationState,
         syncState,
+        isSyncing,
+        syncFailed,
         error,
         publishCommand,
         controlDevice,

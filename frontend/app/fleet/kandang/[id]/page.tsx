@@ -510,6 +510,8 @@ export default function KandangDetailPage() {
         inverterState,
         calibrationState,
         syncState,
+        isSyncing,
+        syncFailed,
         controlDevice,
         setIntermittent,
         setTargetTemp,
@@ -531,8 +533,15 @@ export default function KandangDetailPage() {
     // Show toast notification
     const showToast = (message: string, type: 'success' | 'error') => {
         setToast({ message, type })
-        setTimeout(() => setToast(null), 3000) // Auto-hide after 3 seconds
+        setTimeout(() => setToast(null), 5000) // Auto-hide after 5 seconds
     }
+
+    // Show sync failed popup
+    useEffect(() => {
+        if (syncFailed) {
+            showToast('Gagal sinkronisasi status perangkat. Perangkat mungkin offline.', 'error')
+        }
+    }, [syncFailed])
 
     // Loading state for devices
     const [loadingDevices, setLoadingDevices] = useState<Record<string, boolean>>({})
@@ -1525,7 +1534,16 @@ export default function KandangDetailPage() {
 
                             {/* Control Tab */}
                             {activeTab === 'control' && (
-                                <div>
+                                <div className="relative">
+                                    {/* Sync Loading Overlay */}
+                                    {isSyncing && (
+                                        <div className="absolute inset-0 bg-dark-500/80 rounded-xl flex flex-col items-center justify-center z-20 backdrop-blur-sm">
+                                            <Loader2 className="w-12 h-12 text-primary-400 animate-spin mb-3" />
+                                            <span className="text-sm text-primary-300 font-medium">Memuat status perangkat...</span>
+                                            <span className="text-xs text-gray-500 mt-1">Menunggu respons dari device</span>
+                                        </div>
+                                    )}
+
                                     {/* Inverter Speed Control */}
                                     <div className="bg-dark-400 rounded-lg p-6 mb-6">
                                         <h4 className="text-md font-semibold text-white mb-4 flex items-center">
