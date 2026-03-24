@@ -1603,10 +1603,10 @@ export default function KandangDetailPage() {
                                         {/* Heater Control - Only if product has heater */}
                                         {productConfig?.heater && (
                                             <div
-                                                className={`p-6 rounded-xl border-2 transition-all cursor-pointer ${deviceStates.H?.status === 1
+                                                className={`relative p-6 rounded-xl border-2 transition-all cursor-pointer ${deviceStates.H?.status === 1
                                                     ? 'bg-orange-500/10 border-orange-500/50'
                                                     : 'bg-dark-400 border-dark-100'
-                                                    }`}
+                                                    } ${loadingDevices.H ? 'pointer-events-none' : ''}`}
                                                 onClick={() => {
                                                     const newState = deviceStates.H?.status === 1 ? 0 : 1
                                                     setLoadingDevices(prev => ({ ...prev, H: true }))
@@ -1622,20 +1622,22 @@ export default function KandangDetailPage() {
                                                     )
                                                 }}
                                             >
+                                                {loadingDevices.H && (
+                                                    <div className="absolute inset-0 bg-dark-500/70 rounded-xl flex flex-col items-center justify-center z-10 backdrop-blur-sm">
+                                                        <Loader2 className="w-8 h-8 text-orange-400 animate-spin mb-2" />
+                                                        <span className="text-xs text-orange-300 font-medium">Menunggu...</span>
+                                                    </div>
+                                                )}
                                                 <div className="flex items-center justify-between mb-3">
                                                     <div className="flex items-center">
-                                                        {loadingDevices.H ? (
-                                                            <Loader2 className="w-8 h-8 mr-3 text-orange-400 animate-spin" />
-                                                        ) : (
-                                                            <Thermometer className={`w-8 h-8 mr-3 ${deviceStates.H?.status === 1 ? 'text-orange-400' : 'text-gray-500'}`} />
-                                                        )}
+                                                        <Thermometer className={`w-8 h-8 mr-3 ${deviceStates.H?.status === 1 ? 'text-orange-400' : 'text-gray-500'}`} />
                                                         <div>
                                                             <span className="font-semibold text-white text-lg">Heater</span>
                                                             <p className="text-xs text-gray-400">Pemanas Kandang</p>
                                                         </div>
                                                     </div>
                                                     <div className={`text-2xl font-bold ${deviceStates.H?.status === 1 ? 'text-orange-400' : 'text-gray-500'}`}>
-                                                        {loadingDevices.H ? '...' : (deviceStates.H?.status === 1 ? 'ON' : 'OFF')}
+                                                        {deviceStates.H?.status === 1 ? 'ON' : 'OFF'}
                                                     </div>
                                                 </div>
                                                 {deviceStates.H?.intermittent?.enabled && (
@@ -1650,10 +1652,10 @@ export default function KandangDetailPage() {
                                         {/* Cooler Control - Only if product has cooler */}
                                         {productConfig?.cooler && (
                                             <div
-                                                className={`p-6 rounded-xl border-2 transition-all cursor-pointer ${deviceStates.C?.status === 1
+                                                className={`relative p-6 rounded-xl border-2 transition-all cursor-pointer ${deviceStates.C?.status === 1
                                                     ? 'bg-blue-500/10 border-blue-500/50'
                                                     : 'bg-dark-400 border-dark-100'
-                                                    }`}
+                                                    } ${loadingDevices.C ? 'pointer-events-none' : ''}`}
                                                 onClick={() => {
                                                     const newState = deviceStates.C?.status === 1 ? 0 : 1
                                                     setLoadingDevices(prev => ({ ...prev, C: true }))
@@ -1669,20 +1671,22 @@ export default function KandangDetailPage() {
                                                     )
                                                 }}
                                             >
+                                                {loadingDevices.C && (
+                                                    <div className="absolute inset-0 bg-dark-500/70 rounded-xl flex flex-col items-center justify-center z-10 backdrop-blur-sm">
+                                                        <Loader2 className="w-8 h-8 text-blue-400 animate-spin mb-2" />
+                                                        <span className="text-xs text-blue-300 font-medium">Menunggu...</span>
+                                                    </div>
+                                                )}
                                                 <div className="flex items-center justify-between mb-3">
                                                     <div className="flex items-center">
-                                                        {loadingDevices.C ? (
-                                                            <Loader2 className="w-8 h-8 mr-3 text-blue-400 animate-spin" />
-                                                        ) : (
-                                                            <Wind className={`w-8 h-8 mr-3 ${deviceStates.C?.status === 1 ? 'text-blue-400' : 'text-gray-500'}`} />
-                                                        )}
+                                                        <Wind className={`w-8 h-8 mr-3 ${deviceStates.C?.status === 1 ? 'text-blue-400' : 'text-gray-500'}`} />
                                                         <div>
                                                             <span className="font-semibold text-white text-lg">Cooler</span>
                                                             <p className="text-xs text-gray-400">Pendingin Kandang</p>
                                                         </div>
                                                     </div>
                                                     <div className={`text-2xl font-bold ${deviceStates.C?.status === 1 ? 'text-blue-400' : 'text-gray-500'}`}>
-                                                        {loadingDevices.C ? '...' : (deviceStates.C?.status === 1 ? 'ON' : 'OFF')}
+                                                        {deviceStates.C?.status === 1 ? 'ON' : 'OFF'}
                                                     </div>
                                                 </div>
                                                 {deviceStates.C?.intermittent?.enabled && (
@@ -1716,36 +1720,43 @@ export default function KandangDetailPage() {
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {fans.map(fan => (
-                                            <div
-                                                key={fan.id}
-                                                className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${fan.isOn
-                                                    ? 'bg-green-500/10 border-green-500/50'
-                                                    : 'bg-dark-400 border-dark-100'
-                                                    }`}
-                                                onClick={() => toggleFan(fan.id)}
-                                            >
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <span className="font-semibold text-white">{fan.name}</span>
-                                                    {loadingDevices[`B${fan.id}`] ? (
-                                                        <Loader2 className="w-6 h-6 text-green-400 animate-spin" />
-                                                    ) : (
+                                        {fans.map(fan => {
+                                            const deviceKey = `B${fan.id}`
+                                            const isLoading = loadingDevices[deviceKey]
+                                            return (
+                                                <div
+                                                    key={fan.id}
+                                                    className={`relative p-4 rounded-xl border-2 transition-all cursor-pointer ${fan.isOn
+                                                        ? 'bg-green-500/10 border-green-500/50'
+                                                        : 'bg-dark-400 border-dark-100'
+                                                        } ${isLoading ? 'pointer-events-none' : ''}`}
+                                                    onClick={() => toggleFan(fan.id)}
+                                                >
+                                                    {/* Loading overlay */}
+                                                    {isLoading && (
+                                                        <div className="absolute inset-0 bg-dark-500/70 rounded-xl flex flex-col items-center justify-center z-10 backdrop-blur-sm">
+                                                            <Loader2 className="w-8 h-8 text-cyan-400 animate-spin mb-2" />
+                                                            <span className="text-xs text-cyan-300 font-medium">Menunggu...</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="font-semibold text-white">{fan.name}</span>
                                                         <Fan className={`w-6 h-6 ${fan.isOn ? 'text-green-400 animate-spin' : 'text-gray-500'
                                                             }`} style={{ animationDuration: '2s' }} />
+                                                    </div>
+                                                    <div className={`text-sm font-medium ${fan.isOn ? 'text-green-400' : 'text-gray-500'
+                                                        }`}>
+                                                        {fan.isOn ? 'ON' : 'OFF'}
+                                                    </div>
+                                                    {fan.intermittent.enabled && (
+                                                        <span className="badge badge-info text-xs mt-2">Intermittent</span>
+                                                    )}
+                                                    {fan.target.enabled && (
+                                                        <span className="badge badge-warning text-xs mt-2 ml-1">Target</span>
                                                     )}
                                                 </div>
-                                                <div className={`text-sm font-medium ${fan.isOn ? 'text-green-400' : 'text-gray-500'
-                                                    }`}>
-                                                    {fan.isOn ? 'ON' : 'OFF'}
-                                                </div>
-                                                {fan.intermittent.enabled && (
-                                                    <span className="badge badge-info text-xs mt-2">Intermittent</span>
-                                                )}
-                                                {fan.target.enabled && (
-                                                    <span className="badge badge-warning text-xs mt-2 ml-1">Target</span>
-                                                )}
-                                            </div>
-                                        ))}
+                                            )
+                                        })}
                                     </div>
                                 </div>
                             )}
