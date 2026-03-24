@@ -640,7 +640,12 @@ export default function KandangDetailPage() {
                                 return {
                                     ...(original || {}),  // Keep original fields as base
                                     ...enriched,          // Overlay enriched data
-                                    // Preserve partNumber from original if enriched is empty
+                                    // Preserve critical fields from original if enriched is empty
+                                    _id: enriched._id || original?._id || '',
+                                    flock_id: enriched.flock_id || original?.flock_id || '',
+                                    name: enriched.name || original?.name || '',
+                                    day: enriched.day || original?.day || 0,
+                                    connected: enriched.connected ?? original?.connected ?? false,
                                     partNumber: enriched.partNumber || original?.partNumber || '',
                                 }
                             })
