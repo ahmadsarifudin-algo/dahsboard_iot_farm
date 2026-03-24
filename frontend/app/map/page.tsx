@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import dynamic from 'next/dynamic'
-import { Filter, Layers, X, Thermometer, Droplets, AlertTriangle, Wind, Users } from 'lucide-react'
-
+import { Filter, Layers, X, AlertTriangle, Wifi, WifiOff, RefreshCw, Loader2 } from 'lucide-react'
+import { iotApi, Kandang } from '@/lib/iot-api'
+import authService from '@/lib/auth'
+import { useRouter } from 'next/navigation'
 
 const MapContainer = dynamic(
     () => import('react-leaflet').then((mod) => mod.MapContainer),
@@ -22,24 +24,33 @@ const Popup = dynamic(
     { ssr: false }
 )
 
+// ============= Sleman Area Coordinates (assigned per-kandang by index) =============
+const SLEMAN_LOCATIONS = [
+    { name: "Minggir", lat: -7.7375, lon: 110.2665 },
+    { name: "Seyegan", lat: -7.7488, lon: 110.3085 },
+    { name: "Godean", lat: -7.7692, lon: 110.2950 },
+    { name: "Tempel", lat: -7.7165, lon: 110.3255 },
+    { name: "Turi", lat: -7.6555, lon: 110.3650 },
+    { name: "Pakem", lat: -7.6700, lon: 110.4200 },
+    { name: "Ngaglik", lat: -7.7050, lon: 110.3900 },
+    { name: "Kalasan", lat: -7.7605, lon: 110.4555 },
+    { name: "Prambanan", lat: -7.7520, lon: 110.4900 },
+    { name: "Berbah", lat: -7.7780, lon: 110.4400 },
+]
+
 // ============= Custom Kandang Icon =============
-function createKandangIcon(alarmStatus: 'normal' | 'warning' | 'critical') {
-    const colors = {
-        normal: { fill: '#22c55e', stroke: '#166534', glow: 'rgba(34,197,94,0.3)', pulse: '' },
-        warning: { fill: '#f59e0b', stroke: '#92400e', glow: 'rgba(245,158,11,0.3)', pulse: '' },
-        critical: { fill: '#ef4444', stroke: '#991b1b', glow: 'rgba(239,68,68,0.4)', pulse: 'animation: pulse-marker 1.5s ease-in-out infinite;' },
-    }
-    const c = colors[alarmStatus]
+function createKandangIcon(isOnline: boolean) {
+    const colors = isOnline
+        ? { fill: '#22c55e', stroke: '#166534', glow: 'rgba(34,197,94,0.3)', pulse: '' }
+        : { fill: '#6b7280', stroke: '#374151', glow: 'rgba(107,114,128,0.2)', pulse: '' }
+    const c = colors
 
     const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="40" height="48" viewBox="0 0 40 48">
-        <style>
-            @keyframes pulse-marker { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.7;transform:scale(1.08)} }
-        </style>
         <!-- Shadow -->
         <ellipse cx="20" cy="46" rx="8" ry="2" fill="rgba(0,0,0,0.25)"/>
         <!-- Pin body -->
-        <g style="${c.pulse}transform-origin:20px 24px">
+        <g style="transform-origin:20px 24px">
             <!-- Glow ring -->
             <circle cx="20" cy="20" r="19" fill="${c.glow}" stroke="none"/>
             <!-- Pin shape -->
@@ -71,150 +82,89 @@ function createKandangIcon(alarmStatus: 'normal' | 'warning' | 'critical') {
     })
 }
 
-// ============= Kandang Map Data =============
+// ============= Mapped Kandang Data for Map =============
 interface KandangMapItem {
     id: string
     name: string
+    kode: string
     alamat: string
-    region: string
     lat: number
     lng: number
-    populasi: number
-    suhu: number         // °C
-    kelembaban: number   // %
-    amonia: number       // ppm
-    alarmStatus: 'normal' | 'warning' | 'critical'
-    alarmCount: number
-    alarmMessages: string[]
+    flockCount: number
+    onlineCount: number
+    isOnline: boolean
+    tipe: number
 }
 
-const DUMMY_KANDANG_LOCATIONS: KandangMapItem[] = [
-    {
-        id: 'k-001', name: 'Kandang A1',
-        alamat: 'Jl. Raya Parung No. 12, Parung, Bogor',
-        region: 'Jawa Barat',
-        lat: -6.4205, lng: 106.7340,
-        populasi: 32000, suhu: 28.5, kelembaban: 72, amonia: 8,
-        alarmStatus: 'normal', alarmCount: 0, alarmMessages: []
-    },
-    {
-        id: 'k-002', name: 'Kandang A2',
-        alamat: 'Jl. Raya Parung No. 14, Parung, Bogor',
-        region: 'Jawa Barat',
-        lat: -6.4225, lng: 106.7360,
-        populasi: 28000, suhu: 31.2, kelembaban: 68, amonia: 15,
-        alarmStatus: 'warning', alarmCount: 2,
-        alarmMessages: ['Suhu melebihi batas (>30°C)', 'Amonia tinggi (>12ppm)']
-    },
-    {
-        id: 'k-003', name: 'Kandang B1',
-        alamat: 'Desa Cibadak, Kec. Sukaraja, Sukabumi',
-        region: 'Jawa Barat',
-        lat: -6.8706, lng: 106.8392,
-        populasi: 35000, suhu: 27.8, kelembaban: 75, amonia: 6,
-        alarmStatus: 'normal', alarmCount: 0, alarmMessages: []
-    },
-    {
-        id: 'k-004', name: 'Kandang B2',
-        alamat: 'Jl. Soekarno-Hatta Km 8, Semarang',
-        region: 'Jawa Tengah',
-        lat: -7.0051, lng: 110.4381,
-        populasi: 30000, suhu: 33.1, kelembaban: 64, amonia: 22,
-        alarmStatus: 'critical', alarmCount: 3,
-        alarmMessages: ['Suhu kritis (>32°C)', 'Amonia bahaya (>20ppm)', 'Fan 2 offline']
-    },
-    {
-        id: 'k-005', name: 'Kandang C1',
-        alamat: 'Desa Junrejo, Kec. Junrejo, Batu, Malang',
-        region: 'Jawa Timur',
-        lat: -7.8873, lng: 112.5274,
-        populasi: 25000, suhu: 26.4, kelembaban: 78, amonia: 5,
-        alarmStatus: 'normal', alarmCount: 0, alarmMessages: []
-    },
-    {
-        id: 'k-006', name: 'Kandang C2',
-        alamat: 'Jl. Raya Mojokerto-Jombang Km 5',
-        region: 'Jawa Timur',
-        lat: -7.4709, lng: 112.4341,
-        populasi: 27000, suhu: 29.8, kelembaban: 70, amonia: 11,
-        alarmStatus: 'warning', alarmCount: 1,
-        alarmMessages: ['Kelembaban rendah (<70%)']
-    },
-    {
-        id: 'k-007', name: 'Kandang D1',
-        alamat: 'Desa Tabanan, Kec. Tabanan, Bali',
-        region: 'Bali',
-        lat: -8.5417, lng: 115.1254,
-        populasi: 20000, suhu: 30.5, kelembaban: 65, amonia: 9,
-        alarmStatus: 'normal', alarmCount: 0, alarmMessages: []
-    },
-    {
-        id: 'k-008', name: 'Kandang E1',
-        alamat: 'Desa Aik Darek, Kec. Batukliang, Lombok Tengah',
-        region: 'NTB',
-        lat: -8.7181, lng: 116.2847,
-        populasi: 18000, suhu: 29.2, kelembaban: 71, amonia: 7,
-        alarmStatus: 'normal', alarmCount: 0, alarmMessages: []
-    },
-    {
-        id: 'k-009', name: 'Kandang F1',
-        alamat: 'Jl. Trans Sulawesi Km 12, Maros, Makassar',
-        region: 'Sulawesi Selatan',
-        lat: -5.0576, lng: 119.5726,
-        populasi: 22000, suhu: 32.0, kelembaban: 60, amonia: 18,
-        alarmStatus: 'critical', alarmCount: 2,
-        alarmMessages: ['Suhu kritis (>32°C)', 'Amonia tinggi (>15ppm)']
-    },
-    {
-        id: 'k-010', name: 'Kandang G1',
-        alamat: 'Desa Kubu, Kec. Kubu, Karangasem, Bali',
-        region: 'Bali',
-        lat: -8.3205, lng: 115.5812,
-        populasi: 15000, suhu: 28.0, kelembaban: 73, amonia: 4,
-        alarmStatus: 'normal', alarmCount: 0, alarmMessages: []
-    },
-]
-
-function getAlarmBadge(status: string) {
-    switch (status) {
-        case 'normal': return { label: 'Normal', bg: '#22c55e', textColor: '#166534' }
-        case 'warning': return { label: 'Warning', bg: '#f59e0b', textColor: '#92400e' }
-        case 'critical': return { label: 'Critical', bg: '#ef4444', textColor: '#991b1b' }
-        default: return { label: status, bg: '#6b7280', textColor: '#374151' }
+function getKandangType(tipe: number): string {
+    switch (tipe) {
+        case 1: return 'Chickin Basic'
+        case 2: return 'Chickin Plus'
+        case 3: return 'Chickin Lite'
+        case 4: return 'Chickin Sense'
+        case 5: return 'Chickin Diesel'
+        default: return 'Unknown'
     }
-}
-
-function getSuhuColor(suhu: number): string {
-    if (suhu > 32) return '#ef4444'
-    if (suhu > 30) return '#f59e0b'
-    return '#22c55e'
-}
-
-function getAmoniaColor(amonia: number): string {
-    if (amonia > 20) return '#ef4444'
-    if (amonia > 12) return '#f59e0b'
-    return '#22c55e'
 }
 
 export default function MapPage() {
     const [mounted, setMounted] = useState(false)
-    const [filterRegion, setFilterRegion] = useState('')
-    const [filterAlarm, setFilterAlarm] = useState('')
-
-    const regions = [...new Set(DUMMY_KANDANG_LOCATIONS.map(k => k.region))]
+    const [filterStatus, setFilterStatus] = useState('')
+    const [kandangList, setKandangList] = useState<KandangMapItem[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState('')
+    const router = useRouter()
 
     useEffect(() => {
         setMounted(true)
+        loadKandangData()
     }, [])
 
-    const filtered = DUMMY_KANDANG_LOCATIONS.filter(k => {
-        const matchRegion = !filterRegion || k.region === filterRegion
-        const matchAlarm = !filterAlarm || k.alarmStatus === filterAlarm
-        return matchRegion && matchAlarm
+    async function loadKandangData() {
+        setLoading(true)
+        setError('')
+        try {
+            const token = authService.getToken()
+            if (!token) { router.push('/login'); return }
+
+            const response = await iotApi.getKandangList()
+            const list = response.data || []
+
+            const mapped: KandangMapItem[] = list.map((k: any, idx: number) => {
+                const loc = SLEMAN_LOCATIONS[idx % SLEMAN_LOCATIONS.length]
+                const flocks = k.flocks || []
+                const onlineCount = flocks.filter((f: any) => f.connected).length
+                return {
+                    id: k._id,
+                    name: k.nama || k.kode || `Kandang ${idx + 1}`,
+                    kode: k.kode || '—',
+                    alamat: `Kec. ${loc.name}, Sleman, Yogyakarta`,
+                    lat: loc.lat,
+                    lng: loc.lon,
+                    flockCount: flocks.length,
+                    onlineCount,
+                    isOnline: onlineCount > 0,
+                    tipe: k.tipe || 0,
+                }
+            })
+            setKandangList(mapped)
+        } catch (err: any) {
+            console.error('Failed to load kandang for map:', err)
+            setError(err.message || 'Gagal memuat data')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const filtered = kandangList.filter(k => {
+        if (!filterStatus) return true
+        if (filterStatus === 'online') return k.isOnline
+        if (filterStatus === 'offline') return !k.isOnline
+        return true
     })
 
-    const totalPopulasi = filtered.reduce((sum, k) => sum + k.populasi, 0)
-    const alarmCount = filtered.filter(k => k.alarmStatus !== 'normal').length
+    const onlineCount = kandangList.filter(k => k.isOnline).length
+    const offlineCount = kandangList.length - onlineCount
 
     if (!mounted) {
         return (
@@ -233,140 +183,120 @@ export default function MapPage() {
                     <p className="text-gray-400 mt-1">Lokasi dan status real-time seluruh kandang</p>
                 </div>
 
-                {/* Filters */}
+                {/* Filters & Stats */}
                 <div className="flex items-center space-x-3 flex-wrap gap-2">
                     <div className="flex items-center space-x-2">
                         <Filter className="w-4 h-4 text-gray-500" />
                         <select
                             className="input text-sm"
-                            value={filterRegion}
-                            onChange={(e) => setFilterRegion(e.target.value)}
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
                         >
-                            <option value="">Semua Region</option>
-                            {regions.map((region) => (
-                                <option key={region} value={region}>{region}</option>
-                            ))}
+                            <option value="">Semua Status</option>
+                            <option value="online">Online</option>
+                            <option value="offline">Offline</option>
                         </select>
-                        {filterRegion && (
-                            <button onClick={() => setFilterRegion('')} className="p-1 text-gray-400 hover:text-white">
+                        {filterStatus && (
+                            <button onClick={() => setFilterStatus('')} className="p-1 text-gray-400 hover:text-white">
                                 <X className="w-4 h-4" />
                             </button>
                         )}
                     </div>
 
-                    <select
-                        className="input text-sm"
-                        value={filterAlarm}
-                        onChange={(e) => setFilterAlarm(e.target.value)}
+                    <button
+                        onClick={loadKandangData}
+                        className="p-2 rounded-lg hover:bg-dark-400 text-gray-400 hover:text-white transition-colors"
+                        title="Refresh"
                     >
-                        <option value="">Semua Status</option>
-                        <option value="normal">Normal</option>
-                        <option value="warning">Warning</option>
-                        <option value="critical">Critical</option>
-                    </select>
+                        <RefreshCw className="w-4 h-4" />
+                    </button>
 
                     <div className="flex items-center space-x-4 text-sm text-gray-400">
                         <span className="flex items-center"><Layers className="w-4 h-4 mr-1" />{filtered.length} kandang</span>
-                        <span className="flex items-center"><Users className="w-4 h-4 mr-1" />{totalPopulasi.toLocaleString('id-ID')} ekor</span>
-                        {alarmCount > 0 && (
-                            <span className="flex items-center text-yellow-400">
-                                <AlertTriangle className="w-4 h-4 mr-1" />{alarmCount} alarm
-                            </span>
-                        )}
+                        <span className="flex items-center text-green-400"><Wifi className="w-3.5 h-3.5 mr-1" />{onlineCount} online</span>
+                        <span className="flex items-center text-gray-500"><WifiOff className="w-3.5 h-3.5 mr-1" />{offlineCount} offline</span>
                     </div>
                 </div>
             </div>
 
+            {/* Loading State */}
+            {loading && (
+                <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 text-primary-400 animate-spin" />
+                    <span className="ml-3 text-gray-400">Memuat peta kandang...</span>
+                </div>
+            )}
+
+            {/* Error State */}
+            {error && !loading && (
+                <div className="card text-center py-12">
+                    <p className="text-red-400 mb-4">{error}</p>
+                    <button
+                        onClick={loadKandangData}
+                        className="inline-flex items-center px-4 py-2 rounded-lg bg-primary-600/20 text-primary-400 hover:bg-primary-600/30 border border-primary-500/30 transition-all"
+                    >
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Coba Lagi
+                    </button>
+                </div>
+            )}
+
             {/* Map */}
-            <div className="flex-1 card p-0 overflow-hidden rounded-xl">
-                <MapContainer
-                    center={[-2.5, 118]}
-                    zoom={5}
-                    style={{ height: '100%', width: '100%', minHeight: '500px' }}
-                    scrollWheelZoom={true}
-                >
-                    <TileLayer
-                        attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-                        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                    />
-                    {filtered.map((kandang) => {
-                        const alarm = getAlarmBadge(kandang.alarmStatus)
-                        return (
-                            <Marker key={kandang.id} position={[kandang.lat, kandang.lng]} icon={createKandangIcon(kandang.alarmStatus)}>
+            {!loading && !error && (
+                <div className="flex-1 card p-0 overflow-hidden rounded-xl">
+                    <MapContainer
+                        center={[-7.72, 110.38]}
+                        zoom={11}
+                        style={{ height: '100%', width: '100%', minHeight: '500px' }}
+                        scrollWheelZoom={true}
+                    >
+                        <TileLayer
+                            attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+                            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                        />
+                        {filtered.map((kandang) => (
+                            <Marker key={kandang.id} position={[kandang.lat, kandang.lng]} icon={createKandangIcon(kandang.isOnline)}>
                                 <Popup>
-                                    <div style={{ minWidth: '280px', fontFamily: 'Inter, system-ui, sans-serif' }}>
+                                    <div style={{ minWidth: '260px', fontFamily: 'Inter, system-ui, sans-serif' }}>
                                         {/* Header */}
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                            <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: '#1e293b' }}>{kandang.name}</h3>
+                                            <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: '#1e293b' }}>
+                                                {kandang.kode}
+                                            </h3>
                                             <span style={{
                                                 padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 600,
-                                                backgroundColor: alarm.bg + '22', color: alarm.bg, border: `1px solid ${alarm.bg}44`
+                                                backgroundColor: kandang.isOnline ? '#22c55e22' : '#6b728022',
+                                                color: kandang.isOnline ? '#22c55e' : '#6b7280',
+                                                border: `1px solid ${kandang.isOnline ? '#22c55e44' : '#6b728044'}`
                                             }}>
-                                                {alarm.label}
+                                                {kandang.isOnline ? 'Online' : 'Offline'}
                                             </span>
                                         </div>
                                         <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 10px 0' }}>{kandang.alamat}</p>
 
-                                        {/* Populasi */}
-                                        <div style={{
-                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                            padding: '6px 10px', backgroundColor: '#f1f5f9', borderRadius: '8px', marginBottom: '8px'
-                                        }}>
-                                            <span style={{ fontSize: '12px', color: '#64748b' }}>Populasi</span>
-                                            <span style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>
-                                                {kandang.populasi.toLocaleString('id-ID')} ekor
-                                            </span>
-                                        </div>
-
-                                        {/* Sensor Grid */}
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginBottom: '8px' }}>
-                                            {/* Suhu */}
+                                        {/* Info Grid */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '10px' }}>
+                                            {/* Tipe */}
                                             <div style={{
-                                                textAlign: 'center', padding: '8px 4px', backgroundColor: '#fff7ed',
-                                                borderRadius: '8px', border: '1px solid #fed7aa'
+                                                textAlign: 'center', padding: '8px 4px', backgroundColor: '#f1f5f9',
+                                                borderRadius: '8px'
                                             }}>
-                                                <div style={{ fontSize: '10px', color: '#9a3412', marginBottom: '2px' }}>🌡️ Suhu</div>
-                                                <div style={{ fontSize: '16px', fontWeight: 700, color: getSuhuColor(kandang.suhu) }}>
-                                                    {kandang.suhu}°C
+                                                <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '2px' }}>Tipe</div>
+                                                <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
+                                                    {getKandangType(kandang.tipe)}
                                                 </div>
                                             </div>
-                                            {/* Kelembaban */}
+                                            {/* Device Count */}
                                             <div style={{
-                                                textAlign: 'center', padding: '8px 4px', backgroundColor: '#eff6ff',
-                                                borderRadius: '8px', border: '1px solid #bfdbfe'
+                                                textAlign: 'center', padding: '8px 4px', backgroundColor: '#f1f5f9',
+                                                borderRadius: '8px'
                                             }}>
-                                                <div style={{ fontSize: '10px', color: '#1e40af', marginBottom: '2px' }}>💧 Kelembaban</div>
-                                                <div style={{ fontSize: '16px', fontWeight: 700, color: '#2563eb' }}>
-                                                    {kandang.kelembaban}%
-                                                </div>
-                                            </div>
-                                            {/* Amonia */}
-                                            <div style={{
-                                                textAlign: 'center', padding: '8px 4px', backgroundColor: '#fefce8',
-                                                borderRadius: '8px', border: '1px solid #fde68a'
-                                            }}>
-                                                <div style={{ fontSize: '10px', color: '#92400e', marginBottom: '2px' }}>☁️ Amonia</div>
-                                                <div style={{ fontSize: '16px', fontWeight: 700, color: getAmoniaColor(kandang.amonia) }}>
-                                                    {kandang.amonia} ppm
+                                                <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '2px' }}>Lantai</div>
+                                                <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
+                                                    {kandang.flockCount} lantai ({kandang.onlineCount} online)
                                                 </div>
                                             </div>
                                         </div>
-
-                                        {/* Alarm Messages */}
-                                        {kandang.alarmMessages.length > 0 && (
-                                            <div style={{
-                                                padding: '8px 10px', backgroundColor: kandang.alarmStatus === 'critical' ? '#fef2f2' : '#fffbeb',
-                                                borderRadius: '8px', marginBottom: '8px',
-                                                border: `1px solid ${kandang.alarmStatus === 'critical' ? '#fecaca' : '#fde68a'}`
-                                            }}>
-                                                <div style={{ fontSize: '11px', fontWeight: 600, color: kandang.alarmStatus === 'critical' ? '#dc2626' : '#d97706', marginBottom: '4px' }}>
-                                                    ⚠️ Alarm ({kandang.alarmCount})
-                                                </div>
-                                                {kandang.alarmMessages.map((msg, i) => (
-                                                    <div key={i} style={{ fontSize: '11px', color: '#64748b', padding: '1px 0' }}>• {msg}</div>
-                                                ))}
-                                            </div>
-                                        )}
 
                                         {/* Link */}
                                         <a
@@ -382,10 +312,10 @@ export default function MapPage() {
                                     </div>
                                 </Popup>
                             </Marker>
-                        )
-                    })}
-                </MapContainer>
-            </div>
+                        ))}
+                    </MapContainer>
+                </div>
+            )}
         </div>
     )
 }
