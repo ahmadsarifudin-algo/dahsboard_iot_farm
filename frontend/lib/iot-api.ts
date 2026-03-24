@@ -49,6 +49,12 @@ export interface Flock {
     updateTime: string
     createdAt: string
     updatedAt: string
+    population?: number
+    weight?: {
+        current: number
+        target: number
+        fcr: number | string
+    }
     device: {
         [key: string]: {
             status: number | null
