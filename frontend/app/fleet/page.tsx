@@ -116,28 +116,42 @@ export default function FleetDeviceListPage() {
             const response = await iotApi.getKandangList()
             const kandangList = response.data || []
 
-            // Map each flock from each kandang to a DeviceItem
-            const deviceList: DeviceItem[] = []
+            // Map each flock from each kandang to a DeviceItem, deduplicated by partNumber
+            const deviceMap = new Map<string, DeviceItem>()
             for (const kandang of kandangList) {
                 const flocks = kandang.flocks || []
                 const totalFloors = flocks.length
                 flocks.forEach((flock: any, idx: number) => {
-                    deviceList.push({
-                        id: flock._id || flock.flock_id || `${kandang._id}-${idx}`,
-                        partNumber: flock.partNumber || '—',
-                        name: flock.name || `Lantai ${idx + 1}`,
-                        type: flock.type || '—',
-                        kandangCode: kandang.kode || '—',
-                        kandangOwner: kandang.kode || kandang.alamat || '—',
-                        floorName: getFloorName(idx, totalFloors),
-                        tanggalPasang: kandang.createdAt || '',
-                        ownership: 'beli',
-                        status: flock.connected ? 'online' : 'offline',
-                        maintenanceLogs: [],
-                    })
+                    const pn = flock.partNumber || ''
+                    if (!pn || pn === '—') return  // skip flocks without partNumber
+
+                    if (deviceMap.has(pn)) {
+                        // Same partNumber already exists — merge: if any flock is online, device is online
+                        const existing = deviceMap.get(pn)!
+                        if (flock.connected) existing.status = 'online'
+                        // Append floor name
+                        const floorLabel = getFloorName(idx, totalFloors)
+                        if (!existing.floorName.includes(floorLabel)) {
+                            existing.floorName += `, ${floorLabel}`
+                        }
+                    } else {
+                        deviceMap.set(pn, {
+                            id: flock._id || flock.flock_id || `${kandang._id}-${idx}`,
+                            partNumber: pn,
+                            name: flock.name || `Lantai ${idx + 1}`,
+                            type: flock.type || '—',
+                            kandangCode: kandang.kode || '—',
+                            kandangOwner: kandang.kode || kandang.alamat || '—',
+                            floorName: getFloorName(idx, totalFloors),
+                            tanggalPasang: kandang.createdAt || '',
+                            ownership: 'beli',
+                            status: flock.connected ? 'online' : 'offline',
+                            maintenanceLogs: [],
+                        })
+                    }
                 })
             }
-            setDevices(deviceList)
+            setDevices(Array.from(deviceMap.values()))
         } catch (err: any) {
             console.error('Failed to load devices:', err)
             setError(err.message || 'Gagal memuat data device')
