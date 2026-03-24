@@ -190,11 +190,21 @@ export function buildDataTopic(partNumber: string, lantai: string, type: string)
 
 // Build PUBLISH/COMMAND topic (cmd/ prefix, with /X/ for devices, direct for INV/ALARM/etc)
 export function buildCmdTopic(partNumber: string, lantai: string, type: string): string {
-    // Exceptions for topics that don't need /X/
-    if (type.startsWith('INV') || type.startsWith('ALARM') || type.startsWith('CALVAL')) {
+    // Topics that DON'T need /X/ prefix (settings/config topics)
+    if (
+        type.startsWith('INV') ||
+        type.startsWith('ALARM') ||
+        type.startsWith('CALVAL') ||
+        type.startsWith('ITMEN') ||
+        type.startsWith('ITMON') ||
+        type.startsWith('ITMOFF') ||
+        type.startsWith('TAREN') ||
+        type.startsWith('TARVAL') ||
+        type.startsWith('TARHIS')
+    ) {
         return `cmd/${partNumber}/${lantai}/${type}/${TOPIC_SUFFIX}`
     }
-    // Default: use /X/ for control devices (B1-B5, H, C)
+    // Default: use /X/ for direct device control (B1-B5, H, C)
     return `cmd/${partNumber}/${lantai}/X/${type}/${TOPIC_SUFFIX}`
 }
 
