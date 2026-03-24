@@ -313,7 +313,7 @@ function ChartModal({ isOpen, onClose, title, icon, chartType }: ChartModalProps
                             </div>
                         )}
                         {isWeightChart && (
-                            <span className="text-sm text-gray-400">Data Harian (Hari 1 - {CHICKEN_STATUS.age})</span>
+                            <span className="text-sm text-gray-400">Data Harian</span>
                         )}
                         <button
                             onClick={onClose}
