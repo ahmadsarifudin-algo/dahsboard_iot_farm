@@ -60,25 +60,13 @@ const DUMMY_KANDANG = {
     longitude: 106.7889
 }
 
-// Dummy chicken status data
-const CHICKEN_STATUS = {
-    age: 25, // hari
-    population: {
-        initial: 15000,
-        current: 14850,
-        mortality: 150
-    },
-    weight: {
-        current: 1250, // gram
-        target: 1300, // target bobot di umur ini
-        fcr: 1.45
-    }
-}
+// Chicken status - computed dynamically from API data
+// (CHICKEN_STATUS removed - now uses selectedFlock data directly in the component)
 
-// Generate dummy daily weight chart data
-function generateDailyWeightData() {
+// Generate daily weight chart data
+function generateDailyWeightData(age: number = 30) {
     const data = []
-    for (let day = 1; day <= CHICKEN_STATUS.age; day++) {
+    for (let day = 1; day <= age; day++) {
         // Growth curve simulation
         const baseWeight = 42 + (day * day * 1.8) + (day * 15)
         data.push({
@@ -685,28 +673,30 @@ export default function KandangDetailPage() {
 
     function updateSensorsFromFlock(flock: Flock) {
         // Update sensor values from flock data
-        const temp = flock.actualTemperature ? flock.actualTemperature / 10 : 28
-        const hum = flock.humidity ? flock.humidity / 10 : 70
+        const temp = flock.actualTemperature ? flock.actualTemperature / 10 : 0
+        const hum = flock.humidity ? flock.humidity / 10 : 0
+        const hsiVal = flock.HSI || 0
+        const ammoniaVal = flock.amonia || 0
 
         setSensors(prev => ({
             ...prev,
             temperature: prev.temperature.map((s, i) => ({
                 ...s,
-                value: +(temp + (Math.random() - 0.5) * 2).toFixed(1)
+                value: +temp.toFixed(1)
             })),
             humidity: prev.humidity.map((s, i) => ({
                 ...s,
-                value: Math.round(hum + (Math.random() - 0.5) * 5)
+                value: Math.round(hum)
             })),
             hsi: prev.hsi.map((s, i) => ({
                 ...s,
-                value: flock.HSI || 140,
-                status: flock.HSI && flock.HSI > 160 ? 'danger' : flock.HSI && flock.HSI > 150 ? 'warning' : 'normal'
+                value: hsiVal,
+                status: hsiVal > 160 ? 'danger' : hsiVal > 150 ? 'warning' : 'normal'
             })),
             ammonia: prev.ammonia ? {
-                value: flock.amonia || 12,
+                value: ammoniaVal,
                 unit: 'ppm',
-                status: (flock.amonia || 12) < 20 ? 'normal' : (flock.amonia || 12) < 35 ? 'warning' : 'danger'
+                status: ammoniaVal < 20 ? 'normal' : ammoniaVal < 35 ? 'warning' : 'danger'
             } : null,
             windSpeed: prev.windSpeed
         }))
@@ -1160,7 +1150,7 @@ export default function KandangDetailPage() {
                                     </div>
                                     <div>
                                         <p className="text-sm text-gray-400">Umur Ayam</p>
-                                        <p className="text-3xl font-bold text-white">{CHICKEN_STATUS.age}</p>
+                                        <p className="text-3xl font-bold text-white">{selectedFlock?.day || 0}</p>
                                         <p className="text-sm text-gray-500">hari</p>
                                     </div>
                                 </div>
@@ -1196,12 +1186,18 @@ export default function KandangDetailPage() {
                             <div className="mt-3 pt-3 border-t border-dark-100">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-500">Populasi Awal</span>
-                                    <span className="text-gray-400">{CHICKEN_STATUS.population.initial.toLocaleString()} ekor</span>
+                                    <span className="text-gray-400">{(kandang.flock?.[selectedFloorIndex]?.populasi || selectedFlock?.population || 0).toLocaleString()} ekor</span>
                                 </div>
                                 <div className="flex justify-between text-sm mt-1">
                                     <span className="text-gray-500">Tingkat Kelangsungan</span>
                                     <span className="text-green-400">
-                                        {((CHICKEN_STATUS.population.current / CHICKEN_STATUS.population.initial) * 100).toFixed(1)}%
+                                        {(() => {
+                                            const flockD = kandang.flock?.[selectedFloorIndex]
+                                            const initPop = flockD?.populasi || selectedFlock?.population || 1
+                                            const mort = flockD?.mortality || 0
+                                            const cur = initPop - mort
+                                            return ((cur / initPop) * 100).toFixed(1)
+                                        })()}%
                                     </span>
                                 </div>
                             </div>
@@ -1216,7 +1212,7 @@ export default function KandangDetailPage() {
                                     </div>
                                     <div>
                                         <p className="text-sm text-gray-400">Bobot Rata-rata</p>
-                                        <p className="text-3xl font-bold text-white">{CHICKEN_STATUS.weight.current.toLocaleString()}</p>
+                                        <p className="text-3xl font-bold text-white">{(selectedFlock?.weight?.current || 0).toLocaleString()}</p>
                                         <p className="text-sm text-gray-500">gram</p>
                                     </div>
                                 </div>
@@ -1231,26 +1227,26 @@ export default function KandangDetailPage() {
                             <div className="mt-3 pt-3 border-t border-dark-100">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-500">Target Bobot</span>
-                                    <span className={CHICKEN_STATUS.weight.current >= CHICKEN_STATUS.weight.target ? 'text-green-400' : 'text-yellow-400'}>
-                                        {CHICKEN_STATUS.weight.target.toLocaleString()} gram
+                                    <span className={(selectedFlock?.weight?.current || 0) >= (selectedFlock?.weight?.target || 0) ? 'text-green-400' : 'text-yellow-400'}>
+                                        {(selectedFlock?.weight?.target || 0).toLocaleString()} gram
                                     </span>
                                 </div>
                                 <div className="flex justify-between text-sm mt-1">
                                     <span className="text-gray-500">FCR</span>
-                                    <span className="text-blue-400">{CHICKEN_STATUS.weight.fcr}</span>
+                                    <span className="text-blue-400">{selectedFlock?.weight?.fcr || '—'}</span>
                                 </div>
                                 <div className="mt-2">
                                     <div className="flex justify-between text-xs text-gray-500 mb-1">
                                         <span>Progress</span>
-                                        <span>{((CHICKEN_STATUS.weight.current / CHICKEN_STATUS.weight.target) * 100).toFixed(0)}%</span>
+                                        <span>{(selectedFlock?.weight?.target ? ((selectedFlock?.weight?.current || 0) / selectedFlock.weight.target * 100).toFixed(0) : 0)}%</span>
                                     </div>
                                     <div className="h-2 bg-dark-400 rounded-full overflow-hidden">
                                         <div
-                                            className={`h-full rounded-full transition-all ${CHICKEN_STATUS.weight.current >= CHICKEN_STATUS.weight.target
+                                            className={`h-full rounded-full transition-all ${(selectedFlock?.weight?.current || 0) >= (selectedFlock?.weight?.target || 0)
                                                 ? 'bg-green-500'
                                                 : 'bg-orange-500'
                                                 }`}
-                                            style={{ width: `${Math.min((CHICKEN_STATUS.weight.current / CHICKEN_STATUS.weight.target) * 100, 100)}%` }}
+                                            style={{ width: `${selectedFlock?.weight?.target ? Math.min(((selectedFlock?.weight?.current || 0) / selectedFlock.weight.target) * 100, 100) : 0}%` }}
                                         />
                                     </div>
                                 </div>
