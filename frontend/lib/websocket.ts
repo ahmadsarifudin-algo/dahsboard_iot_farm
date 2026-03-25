@@ -12,38 +12,49 @@ export function useWebSocket() {
     const connect = useCallback(() => {
         if (wsRef.current?.readyState === WebSocket.OPEN) return
 
-        const ws = new WebSocket(WS_URL)
-
-        ws.onopen = () => {
-            console.log('WebSocket connected')
-            setWsConnected(true)
-
-            // Subscribe to all events
-            ws.send(JSON.stringify({ action: 'subscribe', topics: ['all'] }))
-        }
-
-        ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data)
-                handleMessage(data)
-            } catch (err) {
-                console.error('WebSocket message parse error:', err)
+        try {
+            // Auto-upgrade ws:// to wss:// on HTTPS pages to avoid SecurityError
+            let url = WS_URL
+            if (typeof window !== 'undefined' && window.location.protocol === 'https:' && url.startsWith('ws://')) {
+                url = url.replace('ws://', 'wss://')
             }
-        }
 
-        ws.onclose = () => {
-            console.log('WebSocket disconnected')
+            const ws = new WebSocket(url)
+
+            ws.onopen = () => {
+                console.log('WebSocket connected')
+                setWsConnected(true)
+
+                // Subscribe to all events
+                ws.send(JSON.stringify({ action: 'subscribe', topics: ['all'] }))
+            }
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data)
+                    handleMessage(data)
+                } catch (err) {
+                    console.error('WebSocket message parse error:', err)
+                }
+            }
+
+            ws.onclose = () => {
+                console.log('WebSocket disconnected')
+                setWsConnected(false)
+
+                // Reconnect after 5 seconds
+                setTimeout(connect, 5000)
+            }
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error)
+            }
+
+            wsRef.current = ws
+        } catch (err) {
+            console.warn('WebSocket connection failed (non-fatal):', err)
             setWsConnected(false)
-
-            // Reconnect after 3 seconds
-            setTimeout(connect, 3000)
         }
-
-        ws.onerror = (error) => {
-            console.error('WebSocket error:', error)
-        }
-
-        wsRef.current = ws
     }, [setWsConnected])
 
     const handleMessage = useCallback((data: { type: string; payload: any }) => {
@@ -62,7 +73,6 @@ export function useWebSocket() {
 
             case 'telemetry':
                 // Telemetry handled by charts/device detail page
-                // Could dispatch to specific device subscribers
                 break
 
             default:
@@ -83,7 +93,7 @@ export function useWebSocket() {
     }, [connect, disconnect])
 
     return {
-        isConnected: useStore((state) => state.wsConnected),
+        isConnected: useStore((state: any) => state.wsConnected),
         send: (data: object) => {
             if (wsRef.current?.readyState === WebSocket.OPEN) {
                 wsRef.current.send(JSON.stringify(data))

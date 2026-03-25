@@ -16,9 +16,11 @@ import {
 } from 'lucide-react'
 import KandangPerformanceList from '@/components/dashboard/KandangPerformanceList'
 import DataPlayground from '@/components/dashboard/DataPlayground'
-import { api } from '@/lib/api'
+import { iotApi } from '@/lib/iot-api'
 import { useWebSocket } from '@/lib/websocket'
 import { useStore } from '@/lib/store'
+import authService from '@/lib/auth'
+import { useRouter } from 'next/navigation'
 
 // Dummy KPI data for Matrix Farm Poultry
 const FARM_KPI = {
@@ -146,8 +148,9 @@ function KPICard({ title, value, unit, subtitle, icon: Icon, color, trend, trend
 export default function OverviewPage() {
     const [loading, setLoading] = useState(true)
     const { stats, setStats, alarms, setAlarms, sites, setSites } = useStore()
+    const router = useRouter()
 
-    // Connect WebSocket
+    // Connect WebSocket (non-fatal if fails)
     useWebSocket()
 
     useEffect(() => {
@@ -156,26 +159,39 @@ export default function OverviewPage() {
 
     async function loadDashboardData() {
         try {
-            const [statsData, alarmsData, sitesData] = await Promise.all([
-                api.getOverviewStats(),
-                api.getAlarms({ active_only: true, limit: 10 }),
-                api.getSitesMapData(),
-            ])
+            const token = authService.getToken()
+            if (!token) { router.push('/login'); return }
 
-            const typedStats = statsData as any
+            // Fetch real kandang data for device/site counts
+            const response = await iotApi.getKandangList()
+            const kandangList = response.data || []
+
+            let totalDevices = 0
+            let onlineDevices = 0
+            for (const k of kandangList) {
+                const flocks = k.flocks || []
+                // Deduplicate by partNumber (1 PN = 1 device)
+                const seen = new Set<string>()
+                for (const f of flocks) {
+                    const pn = (f as any).partNumber || ''
+                    if (pn && !seen.has(pn)) {
+                        seen.add(pn)
+                        totalDevices++
+                        if ((f as any).connected) onlineDevices++
+                    }
+                }
+            }
+
             setStats({
-                totalDevices: typedStats.total_devices,
-                onlineDevices: typedStats.online_devices,
-                offlineDevices: typedStats.offline_devices,
-                activeAlarms: typedStats.active_alarms,
-                criticalAlarms: typedStats.critical_alarms,
-                warningAlarms: typedStats.warning_alarms,
-                messageRate: typedStats.message_rate,
-                totalSites: typedStats.total_sites,
+                totalDevices,
+                onlineDevices,
+                offlineDevices: totalDevices - onlineDevices,
+                activeAlarms: 0,
+                criticalAlarms: 0,
+                warningAlarms: 0,
+                messageRate: 0,
+                totalSites: kandangList.length,
             })
-
-            setAlarms(alarmsData as any[])
-            setSites(sitesData as any[])
         } catch (err) {
             console.error('Failed to load dashboard data:', err)
         } finally {
