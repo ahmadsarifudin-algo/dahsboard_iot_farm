@@ -196,12 +196,10 @@ export default function OverviewPage() {
 
             // Build metadata for KandangPerformanceList (real names + populasi)
             const meta = kandangList.map((k: any) => {
-                const flocks = k.flocks || []
-                const pop = flocks.reduce((sum: number, f: any) => sum + (f.populasi || 0), 0)
                 return {
                     id: k._id,
-                    name: k.kode || k.nama || 'Kandang',
-                    populasi: pop,
+                    name: k.nama || k.kode || 'Kandang',
+                    populasi: k.populasi || 0,
                 }
             })
             setKandangMeta(meta)
