@@ -147,6 +147,7 @@ function KPICard({ title, value, unit, subtitle, icon: Icon, color, trend, trend
 
 export default function OverviewPage() {
     const [loading, setLoading] = useState(true)
+    const [kandangMeta, setKandangMeta] = useState<{ id: string; name: string; populasi: number }[]>([])
     const { stats, setStats, alarms, setAlarms, sites, setSites } = useStore()
     const router = useRouter()
 
@@ -192,6 +193,18 @@ export default function OverviewPage() {
                 messageRate: 0,
                 totalSites: kandangList.length,
             })
+
+            // Build metadata for KandangPerformanceList (real names + populasi)
+            const meta = kandangList.map((k: any) => {
+                const flocks = k.flocks || []
+                const pop = flocks.reduce((sum: number, f: any) => sum + (f.populasi || 0), 0)
+                return {
+                    id: k._id,
+                    name: k.kode || k.nama || 'Kandang',
+                    populasi: pop,
+                }
+            })
+            setKandangMeta(meta)
         } catch (err) {
             console.error('Failed to load dashboard data:', err)
         } finally {
@@ -338,7 +351,7 @@ export default function OverviewPage() {
 
             {/* Kandang Performance List */}
             <div className="card">
-                <KandangPerformanceList />
+                <KandangPerformanceList kandangMetadata={kandangMeta} />
             </div>
 
             {/* Data Playground - Market Intelligence */}

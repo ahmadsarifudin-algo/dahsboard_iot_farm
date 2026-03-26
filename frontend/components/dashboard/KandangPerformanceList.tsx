@@ -127,10 +127,25 @@ function ChartTooltip({ active, payload, label }: any) {
 
 interface KandangPerformanceListProps {
     data?: KandangPerformance[]
+    kandangMetadata?: { id: string; name: string; populasi: number }[]
 }
 
-export default function KandangPerformanceList({ data = DUMMY_KANDANG_PERFORMANCE }: KandangPerformanceListProps) {
-    const sorted = [...data].sort((a, b) => b.ip - a.ip)
+export default function KandangPerformanceList({ data = DUMMY_KANDANG_PERFORMANCE, kandangMetadata }: KandangPerformanceListProps) {
+    // Merge real kandang names/populasi/IDs into dummy performance data
+    const mergedData = kandangMetadata && kandangMetadata.length > 0
+        ? data.map((item, idx) => {
+            if (idx < kandangMetadata.length) {
+                return {
+                    ...item,
+                    id: kandangMetadata[idx].id,
+                    name: kandangMetadata[idx].name,
+                    populasi: kandangMetadata[idx].populasi,
+                }
+            }
+            return item
+        })
+        : data
+    const sorted = [...mergedData].sort((a, b) => b.ip - a.ip)
     const [showChart, setShowChart] = useState(false)
     const [chartType, setChartType] = useState<'ip' | 'ipc' | 'combined'>('combined')
 
