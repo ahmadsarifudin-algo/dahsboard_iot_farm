@@ -11,8 +11,10 @@ RUN ls -la node_modules/.bin/next || echo "NEXT NOT FOUND"
 COPY . .
 
 # Next.js bakes NEXT_PUBLIC_* env vars at build time — accept as build args
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+ARG NEXT_PUBLIC_API_URL=/api/v1
 ARG NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws
+ARG BACKEND_URL=http://backend:8000
+ENV BACKEND_URL=$BACKEND_URL
 ARG NEXT_PUBLIC_MQTT_URL=ws://broker.chickinindonesia.com:8083/mqtt
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
